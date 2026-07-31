@@ -14,6 +14,14 @@ RUN mvn package -DskipTests -B
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 
+# 安装 AWT 字体渲染所需原生库（验证码图片生成）
+RUN apt-get update -qq && \
+    apt-get install -y -qq \
+      fontconfig \
+      libfreetype6 \
+      fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
 # 从构建阶段复制 jar
 COPY --from=build /app/target/*.jar app.jar
 

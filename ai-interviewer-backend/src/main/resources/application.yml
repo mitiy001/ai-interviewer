@@ -1,1 +1,49 @@
-...
+server:
+  port: ${PORT:8999}
+
+spring:
+  application:
+    name: ai-interviewer
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/ai_interviewer?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 50MB
+  sql:
+    init:
+      mode: ${SPRING_SQL_INIT_MODE:never}
+      schema-locations: classpath:db/schema-tables.sql
+      data-locations: classpath:db/seed.sql
+      continue-on-error: true
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    com.aiinterviewer: debug
+    org.springframework: info
+
+# JWT 配置（生产环境通过 JWT_SECRET 环境变量覆盖）
+jwt:
+  secret: ${JWT_SECRET:AiInterviewer-Jwt-SecretKey-2024-MustBeAtLeast32Chars!!}
+  expiration: ${JWT_EXPIRATION:86400000}

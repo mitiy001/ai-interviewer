@@ -24,10 +24,12 @@ const showDialog = ref(false)
 const editingId = ref<number | null>(null)
 const submitting = ref(false)
 
+// 连通测试状态
 const testingId = ref<number | null>(null)
 const testingForm = ref(false)
 const testResult = ref<ModelTestResult | null>(null)
 
+// TTS 试听状态
 const previewing = ref(false)
 
 const emptyForm: ModelConfigReq = {
@@ -52,11 +54,13 @@ const providers = [
   { value: 'custom', label: '自定义（OpenAI 兼容）' },
 ]
 
+/** 中文音色列表（reactive，音色异步加载后自动更新） */
 const zhVoices = computed(() => {
   const zh = ttsVoiceList.value.filter((v) => v.lang.startsWith('zh'))
   return zh.length > 0 ? zh : ttsVoiceList.value
 })
 
+/** 默认试听文案 */
 const PREVIEW_TEXT = '你好，我是 AI 面试官，欢迎参加本次面试，请做好准备。'
 
 function clearMsg() {
@@ -90,6 +94,7 @@ function openEdit(row: ModelConfig) {
     id: row.id,
     name: row.name,
     provider: row.provider,
+    // 回填脱敏值，让用户看到已配置；提交时若未修改（仍为脱敏值）后端会保留原 Key
     apiKey: row.apiKeyMasked || '',
     model: row.model,
     endpoint: row.endpoint,
@@ -163,6 +168,7 @@ async function remove(row: ModelConfig) {
   }
 }
 
+/** 测试列表中已保存配置 */
 async function testRow(row: ModelConfig) {
   clearMsg()
   testingId.value = row.id
@@ -180,12 +186,14 @@ async function testRow(row: ModelConfig) {
   }
 }
 
+/** 测试弹窗中的未保存表单 */
 async function testForm() {
   clearMsg()
   if (!form.model.trim()) {
     errorMsg.value = '请先填写模型名称'
     return
   }
+  // 编辑场景：apiKey 可为脱敏值（后端回查库补全）；新建场景：apiKey 必填且非脱敏
   if (editingId.value === null && !form.apiKey?.trim()) {
     errorMsg.value = '请先填写 API Key'
     return
@@ -207,11 +215,14 @@ async function testForm() {
   }
 }
 
+/** TTS 声音试听：直接用浏览器内置语音包朗读 */
 function previewVoice() {
   if (!ttsSupported) return
   ttsCancel()
   previewing.value = true
+  // speak 是异步的，这里简单用 setTimeout 标记结束（实际播放由浏览器控制）
   ttsSpeak(PREVIEW_TEXT)
+  // 粗略估算播放时长（按字数 * 语速），用于恢复按钮状态
   const estMs = Math.max(2000, PREVIEW_TEXT.length * 300 / ttsSettings.value.rate)
   setTimeout(() => { previewing.value = false }, estMs)
 }
@@ -282,6 +293,7 @@ onUnmounted(stopPreview)
       </div>
     </div>
 
+    <!-- 新增 / 编辑弹窗 -->
     <div v-if="showDialog" class="modal-mask" @click.self="closeDialog">
       <div class="modal card">
         <h3 class="section-title" style="margin-bottom: 16px;">
@@ -333,6 +345,7 @@ onUnmounted(stopPreview)
           <input v-model="form.judgeEndpoint" class="input mono" placeholder="可使用不同 provider 做判定" />
         </div>
 
+        <!-- ===== 语音播报配置（浏览器内置 TTS，零费用）===== -->
         <div class="tts-section">
           <div class="tts-section-head">
             <span class="tts-section-title">语音播报配置</span>
@@ -409,6 +422,7 @@ onUnmounted(stopPreview)
               </div>
             </div>
 
+            <!-- 试听区 -->
             <div class="tts-preview">
               <div class="tts-preview-left">
                 <span class="tts-preview-label">声音试听</span>
@@ -430,6 +444,7 @@ onUnmounted(stopPreview)
           </div>
         </div>
 
+        <!-- 连通测试结果 -->
         <div v-if="testResult" class="test-result" :class="testResult.success ? 'test-ok' : 'test-fail'">
           <div class="test-head">
             <span class="badge" :class="testResult.success ? 'badge-success' : 'badge-danger'">
@@ -484,6 +499,7 @@ small.muted {
   font-size: 11px;
 }
 
+/* ===== TTS 配置区 ===== */
 .tts-section {
   margin-top: 16px;
   padding: 16px;
@@ -547,6 +563,7 @@ small.muted {
   padding: 6px 14px;
 }
 
+/* 浏览器 TTS 滑块 */
 .tts-slider {
   width: 100%;
   height: 4px;
@@ -625,7 +642,9 @@ small.muted {
   font-style: italic;
 }
 
+/* ===== 移动端响应式（安卓端适配） ===== */
 @media (max-width: 768px) {
+  /* 弹窗：占满更多视口宽度 */
   .modal {
     width: 94vw;
     max-height: 94dvh;
@@ -634,26 +653,35 @@ small.muted {
   .modal-mask {
     padding: 0;
   }
+
+  /* 表格操作列按钮允许换行，避免横向溢出 */
   .table .row {
     flex-wrap: wrap;
     gap: 6px;
   }
+
+  /* 弹窗底部按钮行允许换行 */
   .modal > .row {
     flex-wrap: wrap;
   }
 }
 
 @media (max-width: 480px) {
+  /* 弹窗接近全屏 */
   .modal {
     width: 100vw;
     max-height: 100dvh;
     border-radius: 0;
     padding: 14px;
   }
+
+  /* TTS 配置区内边距缩小 */
   .tts-section {
     padding: 12px;
     margin-top: 12px;
   }
+
+  /* TTS 试听区：垂直堆叠，避免按钮溢出 */
   .tts-preview {
     flex-direction: column;
     align-items: stretch;
@@ -665,9 +693,11 @@ small.muted {
   .tts-preview-btn {
     flex: 1;
   }
+
+  /* TTS 区标题行允许换行 */
   .tts-section-head {
     flex-wrap: wrap;
     gap: 4px;
   }
 }
-</styldiv class=\"tts-preview\">\n              <div class=\"tts-preview-left\">\n                <span class=\"tts-preview-label\">声音试听</span>\n                <span class=\"muted\" style=\"font-size: 11px;\">「{{ PREVIEW_TEXT }}」</span>\n              </div>\n              <div class=\"tts-preview-right\">\n                <button\n                  v-if=\"!previewing\"\n                  class=\"btn btn-secondary tts-preview-btn\"\n                  @click=\"previewVoice\"\n                >试听音色</button>\n                <button\n                  v-else\n                  class=\"btn btn-danger tts-preview-btn\"\n                  @click=\"stopPreview\"\n                >停止播放</button>\n              </div>\n            </div>\n          </div>\n        </div>\n\n        <div v-if=\"testResult\" class=\"test-result\" :class=\"testResult.success ? 'test-ok' : 'test-fail'\">\n          <div class=\"test-head\">\n            <span class=\"badge\" :class=\"testResult.success ? 'badge-success' : 'badge-danger'\">\n              {{ testResult.success ? '连通成功' : '连通失败' }}\n            </span>\n            <span v-if=\"testResult.success\" class=\"muted\" style=\"font-size: 11px;\">\n              耗时 {{ testResult.latencyMs }}ms\n            </span>\n          </div>\n          <div class=\"test-msg\">{{ testResult.message }}</div>\n          <div v-if=\"testResult.success && testResult.reply\" class=\"test-reply\">\n            AI 回复：{{ testResult.reply }}\n          </div>\n        </div>\n\n        <div class=\"row\" style=\"justify-content: flex-end; margin-top: 8px; gap: 8px;\">\n          <button class=\"btn btn-secondary\" :disabled=\"testingForm\" @click=\"testForm\">\n            {{ testingForm ? '测试中…' : '连通测试' }}\n          </button>\n          <button class=\"btn btn-secondary\" @click=\"closeDialog\">取消</button>\n          <button class=\"btn\" :disabled=\"submitting\" @click=\"submit\">\n            {{ submitting ? '提交中…' : '保存' }}\n          </button>\n        </div>\n      </div>\n    </div>\n  </div>\n</template>\n\n<style scoped>\n.modal-mask {\n  position: fixed;\n  inset: 0;\n  background: var(--overlay-mask);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  z-index: 100;\n  padding: 20px;\n}\n\n.modal {\n  width: 600px;\n  max-width: 100%;\n  max-height: 90vh;\n  overflow-y: auto;\n}\n\nsmall.muted {\n  display: block;\n  margin-top: 4px;\n  font-size: 11px;\n}\n\n.tts-section {\n  margin-top: 16px;\n  padding: 16px;\n  border-radius: var(--radius-md);\n  background: var(--gradient-brand-soft);\n  border: 1px solid var(--accent-border);\n}\n\n.tts-section-head {\n  display: flex;\n  align-items: baseline;\n  justify-content: space-between;\n  gap: 8px;\n  margin-bottom: 14px;\n  padding-bottom: 10px;\n  border-bottom: 1px dashed var(--accent-border);\n}\n\n.tts-section-title {\n  font-size: 13px;\n  font-weight: 700;\n  color: var(--accent);\n}\n\n.tts-section-hint {\n  font-size: 11px;\n  color: var(--text-tertiary);\n}\n\n.tts-preview {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  margin-top: 12px;\n  padding: 10px 12px;\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: var(--radius-sm);\n}\n\n.tts-preview-left {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  min-width: 0;\n}\n\n.tts-preview-label {\n  font-size: 12px;\n  font-weight: 700;\n  color: var(--text-primary);\n}\n\n.tts-preview-right {\n  flex-shrink: 0;\n}\n\n.tts-preview-btn {\n  font-size: 12px;\n  padding: 6px 14px;\n}\n\n.tts-slider {\n  width: 100%;\n  height: 4px;\n  -webkit-appearance: none;\n  appearance: none;\n  background: var(--gradient-accent);\n  border-radius: 2px;\n  outline: none;\n  cursor: pointer;\n}\n.tts-slider::-webkit-slider-thumb {\n  -webkit-appearance: none;\n  appearance: none;\n  width: 16px;\n  height: 16px;\n  border-radius: 50%;\n  background: #fff;\n  border: 2px solid var(--accent-color, #6366f1);\n  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.35);\n  cursor: pointer;\n  transition: transform 0.15s ease;\n}\n.tts-slider::-webkit-slider-thumb:hover {\n  transform: scale(1.15);\n}\n.tts-slider::-moz-range-thumb {\n  width: 16px;\n  height: 16px;\n  border-radius: 50%;\n  background: #fff;\n  border: 2px solid var(--accent-color, #6366f1);\n  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.35);\n  cursor: pointer;\n}\n.tts-slider-marks {\n  display: flex;\n  justify-content: space-between;\n  margin-top: 4px;\n  font-size: 11px;\n  color: var(--text-muted, #6b7280);\n}\n\n.test-result {\n  margin-top: 12px;\n  padding: 10px 12px;\n  border-radius: var(--radius-sm);\n  border: 1px solid var(--border-color);\n  font-size: 12px;\n}\n\n.test-ok {\n  background: var(--success-light);\n  border-color: var(--success-border);\n}\n\n.test-fail {\n  background: var(--danger-light);\n  border-color: var(--danger-border);\n}\n\n.test-head {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin-bottom: 6px;\n}\n\n.test-msg {\n  color: var(--text-primary);\n  word-break: break-word;\n}\n\n.test-reply {\n  margin-top: 4px;\n  color: var(--text-secondary);\n  font-style: italic;\n}\n\n@media (max-width: 768px) {\n  .modal {\n    width: 94vw;\n    max-height: 94dvh;\n    padding: 16px;\n  }\n  .modal-mask {\n    padding: 0;\n  }\n  .table .row {\n    flex-wrap: wrap;\n    gap: 6px;\n  }\n  .modal > .row {\n    flex-wrap: wrap;\n  }\n}\n\n@media (max-width: 480px) {\n  .modal {\n    width: 100vw;\n    max-height: 100dvh;\n    border-radius: 0;\n    padding: 14px;\n  }\n  .tts-section {\n    padding: 12px;\n    margin-top: 12px;\n  }\n  .tts-preview {\n    flex-direction: column;\n    align-items: stretch;\n    gap: 8px;\n  }\n  .tts-preview-right {\n    display: flex;\n  }\n  .tts-preview-btn {\n    flex: 1;\n  }\n  .tts-section-head {\n    flex-wrap: wrap;\n    gap: 4px;\n  }\n}\n</style>"}]
+</style>

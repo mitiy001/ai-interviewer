@@ -17,9 +17,9 @@ WORKDIR /app
 # 从构建阶段复制 jar
 COPY --from=build /app/target/*.jar app.jar
 
-# 健康检查
+# 健康检查（使用 PORT 环境变量，Railway 动态分配端口）
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:8999/actuator/health || exit 1
+  CMD curl -f http://localhost:${PORT:-8999}/actuator/health || exit 1
 
 EXPOSE 8999
 

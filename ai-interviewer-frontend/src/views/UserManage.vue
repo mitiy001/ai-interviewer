@@ -1,1 +1,196 @@
-PHNjcmlwdCBzZXR1cCBsYW5nPSJ0cyI+CmltcG9ydCB7IHJlZiB9IGZyb20gJ3Z1ZScKaW1wb3J0IHsgdXNlQXV0aFN0b3JlIH0gZnJvbSAnQC9zdG9yZXMvYXV0aCcKCmNvbnN0IGF1dGggPSB1c2VBdXRoU3RvcmUoKQoKY29uc3QgdXNlcm5hbWUgPSByZWYoJycpCmNvbnN0IHBhc3N3b3JkID0gcmVmKCcnKQpjb25zdCBlcnJvck1zZyA9IHJlZignJykKY29uc3Qgc3VjY2Vzc01zZyA9IHJlZignJykKY29uc3Qgc3VibWl0dGluZyA9IHJlZihmYWxzZSkKCmNvbnN0IHBhc3N3b3JkTWluTGVuID0gOApjb25zdCBwYXNzd29yZEhpbnQgPSBg5bC95bCRICR7cGFzc3dvcmRNaW5MZW59IOS4je+8jOWMheWQq+Wtl+W5s+Wtl+aVsGAKCmZ1bmN0aW9uIHZhbGlkYXRlUGFzc3dvcmQodjogc3RyaW5nKSB7CiAgcmV0dXJuIC9eKD89LipbYS16QS1aXSkoPz0uKlxkKS57OCx9JC8udGVzdCh2KQp9Cgphc3luYyBmdW5jdGlvbiBoYW5kbGVDcmVhdGUoKSB7CiAgZXJyb3JNc2cudmFsdWUgPSAnJwogIHN1Y2Nlc3NNc2cudmFsdWUgPSAnJwoKICBjb25zdCB1ID0gdXNlcm5hbWUudmFsdWUudHJpbSgpCiAgY29uc3QgcCA9IHBhc3N3b3JkLnZhbHVlCgogIGlmICghdSB8fCB1Lmxlbmd0aCA8IDIpIHsKICAgIGVycm9yTXNnLnZhbHVlID0gJ+eUqOaIt+WQjeiHs+WwkSAyIOS4quWtl+etticKICAgIHJldHVybgogIH0KICBpZiAoIS9eW2EtekEtWjAtOV9dezIsMjB9JC8udGVzdCh1KSkgewogICAgZXJyb3JNc2cudmFsdWUgPSAn55So5oi35ZCN5Y+q6IO95ZKM5aWW5a2XL+aVsOWtl+OAgeS4i+WIq+ebmO+8iDItMjAg5L2N77yJJwogICAgcmV0dXJuCiAgfQogIGlmICghdmFsaWRhdGVQYXNzd29yZChwKSkgewogICAgZXJyb3JNc2cudmFsdWUgPSBwYXNzd29yZEhpbnQKICAgIHJldHVybgogIH0KCiAgc3VibWl0dGluZy52YWx1ZSA9IHRydWUKICB0cnkgewogICAgYXdhaXQgYXV0aC5jcmVhdGVVc2VyKHUsIHApCiAgICBzdWNjZXNzTXNnLnZhbHVlID0gYOWUqOaIt+KAuCR7dX3igL3liJfooYzliqDlip9gCiAgICB1c2VybmFtZS52YWx1ZSA9ICcnCiAgICBwYXNzd29yZC52YWx1ZSA9ICcnCiAgfSBjYXRjaCAoZTogYW55KSB7CiAgICBlcnJvck1zZy52YWx1ZSA9IGUucmVzcG9uc2U/LmRhdGE/Lm1lc3NhZ2UgfHwgZS5tZXNzYWdlIHx8ICfliJfooYzlpLHotKUnCiAgfSBmaW5hbGx5IHsKICAgIHN1Ym1pdHRpbmcudmFsdWUgPSBmYWxzZQogIH0KfQo8L3NjcmlwdD4KCjx0ZW1wbGF0ZT4KICA8ZGl2IGNsYXNzPSJhZG1pbi1wYWdlIj4KICAgIDxkaXYgY2xhc3M9ImFkbWluLWNhcmQiPgogICAgICA8aDEgY2xhc3M9ImFkbWluLXRpdGxlIj7nlKjmiLfnrqHnkIY8L2gxPgogICAgICA8cCBjbGFzcz0iYWRtaW4tc3VidGl0bGUiPuWIm+W7uuaVsOeahOeUqOaIt+i0tOW7ujwvcD4KCiAgICAgIDxmb3JtIEBzdWJtaXQucHJldmVudD0iaGFuZGxlQ3JlYXRlIiBjbGFzcz0iYWRtaW4tZm9ybSI+CiAgICAgICAgPGRpdiBjbGFzcz0iZm9ybS1ncm91cCI+CiAgICAgICAgICA8bGFiZWw+55So5oi35ZCNPC9sYWJlbD4KICAgICAgICAgIDxpbnB1dAogICAgICAgICAgICB2LW1vZGVsPSJ1c2VybmFtZSIKICAgICAgICAgICAgdHlwZT0idGV4dCIKICAgICAgICAgICAgcGxhY2Vob2xkZXI9IjItMjAg5L2N5a2X5rWP77yM5pWw5a2X5oiW5LiL5YiX57G75YiXIgogICAgICAgICAgICBhdXRvY29tcGxldGU9Im9mZiIKICAgICAgICAgICAgbWF4bGVuZ3RoPSIyMCIKICAgICAgICAgIC8+CiAgICAgICAgPC9kaXY+CgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAiPgogICAgICAgICAgPGxhYmVsPuWvhueggTwvbGFiZWw+CiAgICAgICAgICA8aW5wdXQKICAgICAgICAgICAgdi1tb2RlbD0icGFzc3dvcmQiCiAgICAgICAgICAgIHR5cGU9InBhc3N3b3JkIgogICAgICAgICAgICA6cGxhY2Vob2xkZXI9InBhc3N3b3JkSGludCIKICAgICAgICAgICAgYXV0b2NvbXBsZXRlPSJuZXctcGFzc3dvcmQiCiAgICAgICAgICAvPgogICAgICAgICAgPHAgY2xhc3M9ImZvcm0taGludCI+e3sgcGFzc3dvcmRIaW50IH19PC9wPgogICAgICAgIDwvZGl2PgoKICAgICAgICA8cCB2LWlmPSJlcnJvck1zZyIgY2xhc3M9Im1zZy1lcnJvciI+e3sgZXJyb3JNc2cgfX08L3A+CiAgICAgICAgPHAgdi1pZj0ic3VjY2Vzc01zZyIgY2xhc3M9Im1zZy1zdWNjZXNzIj57eyBzdWNjZXNzTXNnIH19PC9wPgoKICAgICAgICA8YnV0dG9uIHR5cGU9InN1Ym1pdCIgY2xhc3M9ImJ0bi1wcmltYXJ5IiA6ZGlzYWJsZWQ9InN1Ym1pdHRpbmciPgogICAgICAgICAge3sgc3VibWl0dGluZyA/ICfliJfooYzkuK0uLi4nIDogJ+WIm+W7uueUqOaItycgfX0KICAgICAgICA8L2J1dHRvbj4KICAgICAgPC9mb3JtPgogICAgPC9kaXY+CiAgPC9kaXY+CjwvdGVtcGxhdGU+Cgo8c3R5bGUgc2NvcGVkPgouYWRtaW4tcGFnZSB7CiAgbWluLWhlaWdodDogY2FsYygxMDB2aCAtIDY0cHgpOwogIGRpc3BsYXk6IGZsZXg7CiAgYWxpZ24taXRlbXM6IGZsZXgtc3RhcnQ7CiAganVzdGlmeS1jb250ZW50OiBjZW50ZXI7CiAgcGFkZGluZzogNDhweCAyNHB4Owp9CgouYWRtaW4tY2FyZCB7CiAgd2lkdGg6IDEwMCU7CiAgbWF4LXdpZHRoOiA0NDBweDsKICBiYWNrZ3JvdW5kOiAjZmZmOwogIGJvcmRlci1yYWRpdXM6IDEycHg7CiAgcGFkZGluZzogNDBweCAzMnB4OwogIGJveC1zaGFkb3c6IDAgMnB4IDE2cHggcmdiYSgwLCAwLCAwLCAwLjA4KTsKfQoKLmFkbWluLXRpdGxlIHsKICBmb250LXNpemU6IDIycHg7CiAgZm9udC13ZWlnaHQ6IDcwMDsKICBtYXJnaW46IDAgMCA0cHg7Cn0KCi5hZG1pbi1zdWJ0aXRsZSB7CiAgY29sb3I6ICM4ODg7CiAgZm9udC1zaXplOiAxNHB4OwogIG1hcmdpbjogMCAwIDI4cHg7Cn0KCi5hZG1pbi1mb3JtIHsKICBkaXNwbGF5OiBmbGV4OwogIGZsZXgtZGlyZWN0aW9uOiBjb2x1bW47CiAgZ2FwOiAyMHB4Owp9CgouZm9ybS1ncm91cCB7CiAgZGlzcGxheTogZmxleDsKICBmbGV4LWRpcmVjdGlvbjogY29sdW1uOwogIGdhcDogNnB4Owp9CgouZm9ybS1ncm91cCBsYWJlbCB7CiAgZm9udC1zaXplOiAxM3B4OwogIGZvbnQtd2VpZ2h0OiA1MDA7CiAgY29sb3I6ICM1NTU7Cn0KCi5mb3JtLWdyb3VwIGlucHV0IHsKICBwYWRkaW5nOiAxMHB4IDEycHg7CiAgYm9yZGVyOiAxcHggc29saWQgI2RkZDsKICBib3JkZXItcmFkaXVzOiA4cHg7CiAgZm9udC1zaXplOiAxNHB4OwogIG91dGxpbmU6IG5vbmU7CiAgdHJhbnNpdGlvbjogYm9yZGVyLWNvbG9yIDAuMnM7Cn0KCi5mb3JtLWdyb3VwIGlucHV0OmZvY3VzIHsKICBib3JkZXItY29sb3I6ICM0ZjZlZjc7Cn0KCi5mb3JtLWhpbnQgewogIG1hcmdpbjogMDsKICBmb250LXNpemU6IDEycHg7CiAgY29sb3I6ICM5OTk7Cn0KCi5tc2ctZXJyb3IgewogIGNvbG9yOiAjZTc0YzNjOwogIGZvbnQtc2l6ZTogMTNweDsKICB0ZXh0LWFsaWduOiBjZW50ZXI7CiAgbWFyZ2luOiAwOwp9CgoubXNnLXN1Y2Nlc3MgewogIGNvbG9yOiAjMjdhZTYwOwogIGZvbnQtc2l6ZTogMTNweDsKICB0ZXh0LWFsaWduOiBjZW50ZXI7CiAgbWFyZ2luOiAwOwp9CgouYnRuLXByaW1hcnkgewogIHdpZHRoOiAxMDAlOwogIHBhZGRpbmc6IDEycHg7CiAgYmFja2dyb3VuZDogIzRmNmVmNzsKICBjb2xvcjogI2ZmZjsKICBib3JkZXI6IG5vbmU7CiAgYm9yZGVyLXJhZGl1czogOHB4OwogIGZvbnQtc2l6ZTogMTVweDsKICBmb250LXdlaWdodDogNjAwOwogIGN1cnNvcjogcG9pbnRlcjsKICB0cmFuc2l0aW9uOiBiYWNrZ3JvdW5kIDAuMnM7Cn0KCi5idG4tcHJpbWFyeTpob3ZlciB7CiAgYmFja2dyb3VuZDogIzNkNWJkOTsKfQoKLmJ0bi1wcmltYXJ5OmRpc2FibGVkIHsKICBiYWNrZ3JvdW5kOiAjYTBiMGYwOwogIGN1cnNvcjogbm90LWFsbG93ZWQ7Cn0KPC9zdHlsZT4=
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+
+const username = ref('')
+const password = ref('')
+const errorMsg = ref('')
+const successMsg = ref('')
+const submitting = ref(false)
+
+const passwordMinLen = 8
+const passwordHint = `至少 ${passwordMinLen} 位，包含字母和数字`
+
+function validatePassword(v: string) {
+  return /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/.test(v)
+}
+
+async function handleCreate() {
+  errorMsg.value = ''
+  successMsg.value = ''
+
+  const u = username.value.trim()
+  const p = password.value
+
+  if (!u || u.length < 2) {
+    errorMsg.value = '用户名至少 2 个字符'
+    return
+  }
+  if (!/^[a-zA-Z0-9_]{2,20}$/.test(u)) {
+    errorMsg.value = '用户名只能包含字母、数字、下划线（2-20 位）'
+    return
+  }
+  if (!validatePassword(p)) {
+    errorMsg.value = passwordHint
+    return
+  }
+
+  submitting.value = true
+  try {
+    await auth.createUser(u, p)
+    successMsg.value = `用户「${u}」创建成功`
+    username.value = ''
+    password.value = ''
+  } catch (e: any) {
+    errorMsg.value = e.response?.data?.message || e.message || '创建失败'
+  } finally {
+    submitting.value = false
+  }
+}
+</script>
+
+<template>
+  <div class="admin-page">
+    <div class="admin-card">
+      <h1 class="admin-title">用户管理</h1>
+      <p class="admin-subtitle">创建新的用户账号</p>
+
+      <form @submit.prevent="handleCreate" class="admin-form">
+        <div class="form-group">
+          <label>用户名</label>
+          <input
+            v-model="username"
+            type="text"
+            placeholder="2-20 位字母、数字或下划线"
+            autocomplete="off"
+            maxlength="20"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>密码</label>
+          <input
+            v-model="password"
+            type="password"
+            :placeholder="passwordHint"
+            autocomplete="new-password"
+          />
+          <p class="form-hint">{{ passwordHint }}</p>
+        </div>
+
+        <p v-if="errorMsg" class="msg-error">{{ errorMsg }}</p>
+        <p v-if="successMsg" class="msg-success">{{ successMsg }}</p>
+
+        <button type="submit" class="btn-primary" :disabled="submitting">
+          {{ submitting ? '创建中...' : '创建用户' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.admin-page {
+  min-height: calc(100vh - 64px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 24px;
+}
+
+.admin-card {
+  width: 100%;
+  max-width: 440px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 40px 32px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+}
+
+.admin-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.admin-subtitle {
+  color: #888;
+  font-size: 14px;
+  margin: 0 0 28px;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+}
+
+.form-group input {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  border-color: #4f6ef7;
+}
+
+.form-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
+}
+
+.msg-error {
+  color: #e74c3c;
+  font-size: 13px;
+  text-align: center;
+  margin: 0;
+}
+
+.msg-success {
+  color: #27ae60;
+  font-size: 13px;
+  text-align: center;
+  margin: 0;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  background: #4f6ef7;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background: #3d5bd9;
+}
+
+.btn-primary:disabled {
+  background: #a0b0f0;
+  cursor: not-allowed;
+}
+</style>

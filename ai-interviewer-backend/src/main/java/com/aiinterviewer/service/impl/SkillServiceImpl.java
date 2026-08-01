@@ -34,8 +34,9 @@ public class SkillServiceImpl implements SkillService {
 
     @Override
     public List<SkillResp> list() {
+        Long userId = UserContext.getUserId();
         LambdaQueryWrapper<Skill> qw = new LambdaQueryWrapper<>();
-        qw.eq(Skill::getUserId, UserContext.getUserId())
+        qw.in(Skill::getUserId, List.of(0L, userId))
                 .orderByDesc(Skill::getIsActive)
                 .orderByAsc(Skill::getId);
         return skillMapper.selectList(qw).stream()
@@ -80,10 +81,9 @@ public class SkillServiceImpl implements SkillService {
                 .set(Skill::getIsActive, 0)
                 .set(Skill::getUpdatedAt, LocalDateTime.now());
         skillMapper.update(null, reset);
-        // 再激活指定
+        // 再激活指定（不按 userId 过滤，因为系统模板 userId=0）
         LambdaUpdateWrapper<Skill> upd = new LambdaUpdateWrapper<>();
         upd.eq(Skill::getId, id)
-                .eq(Skill::getUserId, userId)
                 .set(Skill::getIsActive, 1)
                 .set(Skill::getUpdatedAt, LocalDateTime.now());
         skillMapper.update(null, upd);
@@ -127,6 +127,10 @@ public class SkillServiceImpl implements SkillService {
     @Transactional(rollbackFor = Exception.class)
     public void update(Long id, SkillReq req) {
         Skill entity = mustGetOwned(id);
+        // 系统模板不可编辑
+        if (entity.getUserId() == 0L) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "系统模板不可编辑，请复制后修改");
+        }
         if (req.getName() != null && !req.getName().isBlank()) {
             entity.setName(req.getName().trim());
         }
@@ -151,6 +155,10 @@ public class SkillServiceImpl implements SkillService {
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         Skill entity = mustGetOwned(id);
+        // 系统模板不可删除
+        if (entity.getUserId() == 0L) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "系统模板不可删除");
+        }
         skillMapper.deleteById(id);
         log.info("删除 skill id={} name={} userId={}", id, entity.getName(), UserContext.getUserId());
     }
@@ -159,15 +167,21 @@ public class SkillServiceImpl implements SkillService {
 
     private Skill mustGetOwned(Long id) {
         Skill entity = skillMapper.selectById(id);
-        if (entity == null || !UserContext.getUserId().equals(entity.getUserId())) {
+        if (entity == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "Skill 不存在");
+        }
+        // 系统模板（userId=0）对所有用户可见，但不可编辑/删除
+        Long userId = UserContext.getUserId();
+        if (!userId.equals(entity.getUserId()) && entity.getUserId() != 0L) {
             throw new BusinessException(ResultCode.NOT_FOUND, "Skill 不存在");
         }
         return entity;
     }
 
     private Skill mustGetActive() {
+        Long userId = UserContext.getUserId();
         LambdaQueryWrapper<Skill> qw = new LambdaQueryWrapper<>();
-        qw.eq(Skill::getUserId, UserContext.getUserId())
+        qw.in(Skill::getUserId, List.of(0L, userId))
                 .eq(Skill::getIsActive, 1).last("LIMIT 1");
         Skill active = skillMapper.selectOne(qw);
         if (active == null) {

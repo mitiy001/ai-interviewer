@@ -18,7 +18,7 @@ import java.util.Set;
  * JWT 认证过滤器
  * <p>
  * 从 httpOnly Cookie 中读取 JWT Token，解析 userId 后设置到 UserContext。
- * 公开接口（登录/验证码）无需认证，直接放行。
+ * 公开接口（登录/注册/验证码）无需认证，直接放行。
  * 认证失败时返回 401 JSON，不重定向（前端 Axios 拦截器处理跳转）。
  */
 @Slf4j
@@ -78,12 +78,19 @@ public class AuthFilter extends OncePerRequestFilter {
     }
 
     private String extractToken(HttpServletRequest request) {
+        // 1. 优先从 httpOnly Cookie 中提取（常规 Ajax 请求）
         Cookie[] cookies = request.getCookies();
-        if (cookies == null) return null;
-        for (Cookie c : cookies) {
-            if (COOKIE_NAME.equals(c.getName())) {
-                return c.getValue();
+        if (cookies != null) {
+            for (Cookie c : cookies) {
+                if (COOKIE_NAME.equals(c.getName())) {
+                    return c.getValue();
+                }
             }
+        }
+        // 2. 从查询参数 token 中提取（SSE EventSource 跨域场景，Cookie 可能被浏览器拦截）
+        String tokenParam = request.getParameter("token");
+        if (tokenParam != null && !tokenParam.isEmpty()) {
+            return tokenParam;
         }
         return null;
     }

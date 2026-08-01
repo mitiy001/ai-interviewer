@@ -1,8 +1,6 @@
 -- AI 面试官 种子数据
--- 一键导入：mysql -uroot -p123456 < seed.sql
--- 依赖 schema.sql 已建表
-
-USE ai_interviewer;
+-- 一键导入：mysql -uroot -p123456 < seed.sql（需先 USE ai_interviewer）
+-- Spring Boot 自动初始化时无需 USE，因为连接已指向目标数据库
 
 -- 默认管理员用户（id=1，role=admin，密码 BCrypt 哈希）
 -- 仅系统初始化时插入，已有记录则仅更新 role 确保是管理员

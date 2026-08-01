@@ -1,5 +1,6 @@
 package com.aiinterviewer.service;
 
+import com.aiinterviewer.dto.req.SkillReq;
 import com.aiinterviewer.dto.resp.SkillResp;
 import com.aiinterviewer.entity.Skill;
 
@@ -24,6 +25,15 @@ public interface SkillService {
 
     /** 按 id 获取 skill 原始实体（供指定 skill 面试使用，供 graph 节点内部使用） */
     Skill getByIdRaw(Long id);
+
+    /** 创建 skill */
+    Long create(SkillReq req);
+
+    /** 更新 skill */
+    void update(Long id, SkillReq req);
+
+    /** 删除 skill */
+    void delete(Long id);
 
     /** 激活指定 skill（其他自动取消激活） */
     void activate(Long id);

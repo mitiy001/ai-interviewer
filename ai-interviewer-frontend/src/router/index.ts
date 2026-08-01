@@ -42,6 +42,12 @@ const router = createRouter({
       meta: { admin: true },
       component: () => import('@/views/UserManage.vue'),
     },
+    {
+      path: '/admin/skills',
+      name: 'admin-skills',
+      meta: { admin: true },
+      component: () => import('@/views/SkillManage.vue'),
+    },
   ],
 })
 

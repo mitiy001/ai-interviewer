@@ -25,7 +25,8 @@ async function handleLogout() {
           <router-link to="/interview" class="nav-link">面试</router-link>
           <router-link to="/report" class="nav-link">报告</router-link>
           <router-link to="/settings" class="nav-link">设置</router-link>
-          <router-link v-if="auth.isAdmin" to="/admin/users" class="nav-link nav-admin">管理</router-link>
+          <router-link v-if="auth.isAdmin" to="/admin/users" class="nav-link nav-admin">用户管理</router-link>
+          <router-link v-if="auth.isAdmin" to="/admin/skills" class="nav-link nav-admin">Skill 标准</router-link>
           <span class="nav-user">
             <span class="nav-username">{{ auth.user.username }}</span>
             <button class="nav-logout" @click="handleLogout">退出</button>

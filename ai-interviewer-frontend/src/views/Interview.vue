@@ -334,7 +334,12 @@ onUnmounted(() => {
 
 <template>
   <div class="col">
-    <p v-if="errorMsg" class="error-text">{{ errorMsg }}</p>
+    <p v-if="errorMsg" class="error-text" style="background: #fef2f2; color: #dc2626; padding: 12px; border-radius: 8px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+      <span>{{ errorMsg }}</span>
+      <button class="btn btn-danger" @click="exitInterview" v-if="interviewId !== null" style="flex-shrink: 0;">
+        退出面试
+      </button>
+    </p>
 
     <!-- 未开始面试：列表 + 启动表单 -->
     <template v-if="interviewId === null">
@@ -498,6 +503,7 @@ onUnmounted(() => {
             :disabled="!waitingAnswer || finished"
             @keydown.ctrl.enter="sendAnswer"
             rows="3"
+            maxlength="500"
           ></textarea>
           <div class="input-actions">
             <button

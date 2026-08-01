@@ -78,8 +78,11 @@ export const InterviewApi = {
   list: () => unwrap<InterviewListItem[]>(http.get('/interview')),
   answer: (id: number, answer: string) =>
     http.post(`/interview/${id}/answer`, { answer }).then((r) => r.data),
-  /** SSE 流地址（EventSource 用） */
-  streamUrl: (id: number) => `/api/interview/${id}/stream`,
+  /** SSE 流地址（EventSource 用），使用完整后端地址确保跨域连接正确 */
+  streamUrl: (id: number) => {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    return `${base}/api/interview/${id}/stream`
+  },
   /** 中断面试（用户退出时调用，确保状态及时更新为 ABORTED） */
   abort: (id: number) => http.post(`/interview/${id}/abort`).then((r) => r.data),
   /** 删除面试记录及关联数据 */

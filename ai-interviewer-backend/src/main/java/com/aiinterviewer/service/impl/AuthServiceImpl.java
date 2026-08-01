@@ -20,7 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * 用户认证 Service 实现
@@ -85,13 +87,7 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             throw new BusinessException(ResultCode.NOT_FOUND, "用户不存在");
         }
-        UserResp resp = new UserResp();
-        resp.setId(user.getId());
-        resp.setUsername(user.getUsername());
-        resp.setRole(user.getRole());
-        resp.setLastLoginAt(user.getLastLoginAt());
-        resp.setCreatedAt(user.getCreatedAt());
-        return resp;
+        return toUserResp(user);
     }
 
     @Override
@@ -133,6 +129,98 @@ public class AuthServiceImpl implements AuthService {
         return jwtUtil.generateToken(user.getId(), user.getUsername());
     }
 
+    // ===== 管理员接口实现 =====
+
+    @Override
+    public List<UserResp> listUsers() {
+        checkAdmin();
+        List<User> users = userMapper.selectList(
+                new LambdaQueryWrapper<User>().orderByAsc(User::getId));
+        return users.stream().map(this::toUserResp).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateUser(Long id, Map<String, Object> body) {
+        checkAdmin();
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "用户不存在");
+        }
+
+        // 禁止修改管理员自身
+        Long currentUserId = UserContext.getUserId();
+        if (id.equals(currentUserId)) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "不能修改自己的账号");
+        }
+
+        boolean changed = false;
+        if (body.containsKey("status")) {
+            Integer status = ((Number) body.get("status")).intValue();
+            if (status != 0 && status != 1) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "状态值无效（0/1）");
+            }
+            user.setStatus(status);
+            changed = true;
+        }
+        if (body.containsKey("role")) {
+            String role = (String) body.get("role");
+            if (!"user".equals(role) && !"admin".equals(role)) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "角色值无效（user/admin）");
+            }
+            user.setRole(role);
+            changed = true;
+        }
+
+        if (changed) {
+            user.setUpdatedAt(LocalDateTime.now());
+            userMapper.updateById(user);
+            log.info("管理员更新用户 userId={} 信息: {}", id, body);
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteUser(Long id) {
+        checkAdmin();
+
+        // 禁止删除管理员自身
+        Long currentUserId = UserContext.getUserId();
+        if (id.equals(currentUserId)) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "不能删除自己的账号");
+        }
+
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "用户不存在");
+        }
+
+        userMapper.deleteById(id);
+        log.info("管理员删除用户 userId={} username={}", id, user.getUsername());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void resetPassword(Long id, String newPassword) {
+        checkAdmin();
+
+        if (!PASSWORD_PATTERN.matcher(newPassword).matches()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "密码须至少 8 位，包含字母和数字");
+        }
+
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "用户不存在");
+        }
+
+        user.setPasswordHash(PASSWORD_ENCODER.encode(newPassword));
+        user.setUpdatedAt(LocalDateTime.now());
+        userMapper.updateById(user);
+        log.info("管理员重置用户密码 userId={} username={}", id, user.getUsername());
+    }
+
+    // ===== 私有方法 =====
+
     /** 校验当前用户是否为管理员 */
     private void checkAdmin() {
         Long userId = UserContext.getUserId();
@@ -167,5 +255,16 @@ public class AuthServiceImpl implements AuthService {
             skillMapper.insert(copy);
         }
         log.info("已为 userId={} 复制 {} 条默认 Skill", targetUserId, templates.size());
+    }
+
+    private UserResp toUserResp(User user) {
+        UserResp resp = new UserResp();
+        resp.setId(user.getId());
+        resp.setUsername(user.getUsername());
+        resp.setRole(user.getRole());
+        resp.setStatus(user.getStatus());
+        resp.setLastLoginAt(user.getLastLoginAt());
+        resp.setCreatedAt(user.getCreatedAt());
+        return resp;
     }
 }

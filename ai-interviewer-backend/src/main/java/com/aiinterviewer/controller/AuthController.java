@@ -87,3 +87,4 @@ public class AuthController {
         String token = authService.createUser(username.trim(), password);
         return Result.ok(Map.of("token", token, "username", username.trim()));
     }
+}

@@ -9,15 +9,21 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
  * 用户认证接口
  * <p>
  * <ul>
- *   <li>POST /api/auth/login         登录</li>
- *   <li>POST /api/auth/logout        登出</li>
- *   <li>GET  /api/auth/me            获取当前用户信息</li>
+ *   <li>POST /api/auth/login               登录</li>
+ *   <li>POST /api/auth/logout              登出</li>
+ *   <li>GET  /api/auth/me                  获取当前用户信息</li>
+ *   <li>POST /api/auth/admin/users         管理员创建用户</li>
+ *   <li>GET  /api/auth/admin/users         管理员获取用户列表</li>
+ *   <li>PUT  /api/auth/admin/users/{id}    管理员更新用户</li>
+ *   <li>DELETE /api/auth/admin/users/{id}  管理员删除用户</li>
+ *   <li>PUT  /api/auth/admin/users/{id}/reset-password  管理员重置密码</li>
  * </ul>
  */
 @RestController
@@ -71,11 +77,10 @@ public class AuthController {
         return Result.ok(authService.getCurrentUser());
     }
 
+    // ===== 管理员接口 =====
+
     /**
      * 管理员创建用户（仅 admin 角色可调用）
-     * <p>
-     * 请求体：{"username": "xxx", "password": "xxx"}
-     * 新建用户自动获得默认 Skill，默认角色为 user。
      */
     @PostMapping("/admin/users")
     public Result<Map<String, Object>> createUser(@RequestBody Map<String, String> body) {
@@ -86,5 +91,46 @@ public class AuthController {
         }
         String token = authService.createUser(username.trim(), password);
         return Result.ok(Map.of("token", token, "username", username.trim()));
+    }
+
+    /**
+     * 管理员获取用户列表
+     */
+    @GetMapping("/admin/users")
+    public Result<List<UserResp>> listUsers() {
+        return Result.ok(authService.listUsers());
+    }
+
+    /**
+     * 管理员更新用户信息（状态、角色）
+     * 请求体：{"status": 1, "role": "user"}
+     */
+    @PutMapping("/admin/users/{id}")
+    public Result<Void> updateUser(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        authService.updateUser(id, body);
+        return Result.ok();
+    }
+
+    /**
+     * 管理员删除用户
+     */
+    @DeleteMapping("/admin/users/{id}")
+    public Result<Void> deleteUser(@PathVariable Long id) {
+        authService.deleteUser(id);
+        return Result.ok();
+    }
+
+    /**
+     * 管理员重置用户密码
+     * 请求体：{"password": "newPassword123"}
+     */
+    @PutMapping("/admin/users/{id}/reset-password")
+    public Result<Void> resetPassword(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String password = body.get("password");
+        if (password == null) {
+            return Result.fail(400, "密码不能为空");
+        }
+        authService.resetPassword(id, password);
+        return Result.ok();
     }
 }

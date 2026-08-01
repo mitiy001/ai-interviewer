@@ -2,6 +2,7 @@ package com.aiinterviewer.service.impl;
 
 import com.aiinterviewer.common.ResultCode;
 import com.aiinterviewer.common.UserContext;
+import com.aiinterviewer.dto.req.SkillReq;
 import com.aiinterviewer.dto.resp.SkillResp;
 import com.aiinterviewer.entity.Skill;
 import com.aiinterviewer.exception.BusinessException;
@@ -89,6 +90,71 @@ public class SkillServiceImpl implements SkillService {
         log.info("activate skill id={} userId={}", id, userId);
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long create(SkillReq req) {
+        // 校验
+        if (req.getName() == null || req.getName().isBlank()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "名称不能为空");
+        }
+        if (req.getPosition() == null || req.getPosition().isBlank()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "职位不能为空");
+        }
+        if (req.getLevel() == null || req.getLevel().isBlank()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "等级不能为空");
+        }
+        if (req.getPromptTemplate() == null || req.getPromptTemplate().isBlank()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "提示词模板不能为空");
+        }
+
+        Skill entity = new Skill();
+        entity.setUserId(UserContext.getUserId());
+        entity.setName(req.getName().trim());
+        entity.setPosition(req.getPosition().trim());
+        entity.setLevel(req.getLevel().trim());
+        entity.setPromptTemplate(req.getPromptTemplate().trim());
+        entity.setScoringDimensions(toDimensionsJson(req.getScoringDimensions()));
+        entity.setIsActive(0);
+        entity.setCreatedAt(LocalDateTime.now());
+        entity.setUpdatedAt(LocalDateTime.now());
+        skillMapper.insert(entity);
+
+        log.info("创建 skill id={} name={} userId={}", entity.getId(), entity.getName(), UserContext.getUserId());
+        return entity.getId();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void update(Long id, SkillReq req) {
+        Skill entity = mustGetOwned(id);
+        if (req.getName() != null && !req.getName().isBlank()) {
+            entity.setName(req.getName().trim());
+        }
+        if (req.getPosition() != null && !req.getPosition().isBlank()) {
+            entity.setPosition(req.getPosition().trim());
+        }
+        if (req.getLevel() != null && !req.getLevel().isBlank()) {
+            entity.setLevel(req.getLevel().trim());
+        }
+        if (req.getPromptTemplate() != null && !req.getPromptTemplate().isBlank()) {
+            entity.setPromptTemplate(req.getPromptTemplate().trim());
+        }
+        if (req.getScoringDimensions() != null) {
+            entity.setScoringDimensions(toDimensionsJson(req.getScoringDimensions()));
+        }
+        entity.setUpdatedAt(LocalDateTime.now());
+        skillMapper.updateById(entity);
+        log.info("更新 skill id={} userId={}", id, UserContext.getUserId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void delete(Long id) {
+        Skill entity = mustGetOwned(id);
+        skillMapper.deleteById(id);
+        log.info("删除 skill id={} name={} userId={}", id, entity.getName(), UserContext.getUserId());
+    }
+
     // ---------- private ----------
 
     private Skill mustGetOwned(Long id) {
@@ -123,6 +189,18 @@ public class SkillServiceImpl implements SkillService {
         resp.setCreatedAt(entity.getCreatedAt());
         resp.setUpdatedAt(entity.getUpdatedAt());
         return resp;
+    }
+
+    private String toDimensionsJson(List<SkillReq.ScoringDimensionReq> dimensions) {
+        if (dimensions == null || dimensions.isEmpty()) {
+            return "[]";
+        }
+        try {
+            return objectMapper.writeValueAsString(dimensions);
+        } catch (Exception e) {
+            log.warn("序列化 scoring_dimensions 失败: {}", e.getMessage());
+            return "[]";
+        }
     }
 
     private List<SkillResp.ScoringDimension> parseDimensions(String json) {

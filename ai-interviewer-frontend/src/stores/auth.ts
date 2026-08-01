@@ -6,6 +6,7 @@ export interface UserInfo {
   id: number
   username: string
   role: string
+  status: number
   lastLoginAt: string | null
   createdAt: string
 }
@@ -63,5 +64,26 @@ export const useAuthStore = defineStore('auth', () => {
     return res.data
   }
 
-  return { user, token, loading, isAdmin, login, fetchUser, logout, createUser }
+  /** 管理员获取用户列表 */
+  async function listUsers(): Promise<UserInfo[]> {
+    const res = await http.get('/auth/admin/users')
+    return res.data.data
+  }
+
+  /** 管理员更新用户（status/role） */
+  async function updateUser(id: number, data: { status?: number; role?: string }) {
+    await http.put(`/auth/admin/users/${id}`, data)
+  }
+
+  /** 管理员删除用户 */
+  async function deleteUser(id: number) {
+    await http.delete(`/auth/admin/users/${id}`)
+  }
+
+  /** 管理员重置用户密码 */
+  async function resetPassword(id: number, password: string) {
+    await http.put(`/auth/admin/users/${id}/reset-password`, { password })
+  }
+
+  return { user, token, loading, isAdmin, login, fetchUser, logout, createUser, listUsers, updateUser, deleteUser, resetPassword }
 })

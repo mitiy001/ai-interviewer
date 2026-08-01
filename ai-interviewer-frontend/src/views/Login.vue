@@ -98,7 +98,7 @@ async function handleLogin() {
       </form>
 
       <p class="auth-link">
-        还没有账号？<router-link to="/register">立即注册</router-link>
+        请联系管理员创建账号
       </p>
     </div>
   </div>

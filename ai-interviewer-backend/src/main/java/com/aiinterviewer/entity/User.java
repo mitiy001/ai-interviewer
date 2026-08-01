@@ -17,6 +17,8 @@ public class User {
     private String passwordHash;
     private String email;
     private Integer status;
+    /** admin / user */
+    private String role;
     private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

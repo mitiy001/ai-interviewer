@@ -18,7 +18,7 @@ import java.util.Set;
  * JWT 认证过滤器
  * <p>
  * 从 httpOnly Cookie 中读取 JWT Token，解析 userId 后设置到 UserContext。
- * 公开接口（登录/注册/验证码）无需认证，直接放行。
+ * 公开接口（登录/验证码）无需认证，直接放行。
  * 认证失败时返回 401 JSON，不重定向（前端 Axios 拦截器处理跳转）。
  */
 @Slf4j
@@ -32,7 +32,6 @@ public class AuthFilter extends OncePerRequestFilter {
     /** 公开接口（无需认证） */
     private static final Set<String> PUBLIC_PATHS = Set.of(
             "/api/auth/login",
-            "/api/auth/register",
             "/api/auth/captcha",
             "/actuator/health"
     );

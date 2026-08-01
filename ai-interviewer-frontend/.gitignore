@@ -1,0 +1,28 @@
+# Node
+node_modules/
+*.log
+.pnpm-store/
+
+# Java
+ai-interviewer-backend/target/
+*.class
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env.local
+.env.*.local
+
+# Build output
+dcha-row {\n  display: flex;\n  gap: 12px;\n  align-items: center;\n}\n\n.captcha-row input {\n  flex: 1;\n}\n\n.captcha-img {\n  height: 44px;\n  width: auto;\n  border-radius: 6px;\n  cursor: pointer;\n  border: 1px solid #eee;\n}\n\n.error-msg {\n  color: #e74c3c;\n  font-size: 13px;\n  text-align: center;\n  margin: 0;\n}\n\n.btn-primary {\n  width: 100%;\n  padding: 12px;\n  background: #4f6ef7;\n  color: #fff;\n  border: none;\n  border-radius: 8px;\n  font-size: 15px;\n  font-weight: 600;\n  cursor: pointer;\n  transition: background 0.2s;\n}\n\n.btn-primary:hover {\n  background: #3d5bd9;\n}\n\n.btn-primary:disabled {\n  background: #a0b0f0;\n  cursor: not-allowed;\n}\n\n.auth-link {\n  text-align: center;\n  font-size: 13px;\n  color: #888;\n  margin-top: 24px;\n}\n\n.auth-link a {\n  color: #4f6ef7;\n  text-decoration: none;\n  font-weight: 500;\n}\n\n.auth-link a:hover {\n  text-decoration: underline;\n}\n</style>"}, {"path": "ai-interviewer-frontend/src/stores/auth.ts", "content": "import { defineStore } from 'pinia'\nimport { ref } from 'vue'\nimport http from '@/api/http'\n\nexport interface UserInfo {\n  id: number\n  username: string\n  lastLoginAt: string | null\n  createdAt: string\n}\n\nexport const useAuthStore = defineStore('auth', () => {\n  const user = ref<UserInfo | null>(null)\n  const token = ref<string | null>(null)\n  const loading = ref(false)\n\n  /** 获取验证码 */\n  async function getCaptcha(): Promise<{ token: string; image: string }> {\n    const res = await http.get('/auth/captcha')\n    return res.data.data\n  }\n\n  /** 登录 */\n  async function login(\n    username: string,\n    password: string,\n    captchaToken: string,\n    captchaCode: string\n  ) {\n    loading.value = true\n    try {\n      const res = await http.post('/auth/login', {\n        username,\n        password,\n        captchaToken,\n        captchaCode,\n      })\n      const data = res.data.data\n      token.value = data.token\n      user.value = data.user\n      return true\n    } finally {\n      loading.value = false\n    }\n  }\n\n  /** 获取当前用户信息 */\n  async function fetchUser() {\n    try {\n      const res = await http.get('/auth/me')\n      user.value = res.data.data\n      return true\n    } catch {\n      user.value = null\n      token.value = null\n      return false\n    }\n  }\n\n  /** 登出 */\n  async function logout() {\n    await http.post('/auth/logout')\n    user.value = null\n    token.value = null\n  }\n\n  return { user, token, loading, getCaptcha, login, fetchUser, logout }\n})"}, {"path": "ai-interviewer-frontend/.gitignore", "content": "# Node\nnode_modules/\n*.log\n.pnpm-store/\n\n# Java\nai-interviewer-backend/target/\n*.class\n*.jar\n*.war\n\n# IDE\n.idea/\n*.iml\n.vscode/\n*.swp\n*.swo\n\n# OS\n.DS_Store\nThumbs.db\n\n# Environment\n.env.local\n.env.*.local\n\n# Build output\ndist/"}]

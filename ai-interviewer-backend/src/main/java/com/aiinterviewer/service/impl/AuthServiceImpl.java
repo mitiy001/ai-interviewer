@@ -45,51 +45,6 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public String register(String username, String password, String captchaToken, String captchaCode) {
-        // 1. 参数校验
-        if (!USERNAME_PATTERN.matcher(username).matches()) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "用户名须为 2-20 位字母/数字/下划线");
-        }
-        if (!PASSWORD_PATTERN.matcher(password).matches()) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "密码须至少 8 位，包含字母和数字");
-        }
-
-        // 2. 验证码校验
-        if (!captchaService.validate(captchaToken, captchaCode)) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "验证码错误或已过期");
-        }
-
-        // 3. 查重
-        Long exist = userMapper.selectCount(
-                new LambdaQueryWrapper<User>().eq(User::getUsername, username));
-        if (exist != null && exist > 0) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "用户名已存在");
-        }
-
-        // 4. 创建用户
-        User user = new User();
-        user.setUsername(username);
-        user.setPasswordHash(PASSWORD_ENCODER.encode(password));
-        user.setStatus(1);
-        user.setCreatedAt(LocalDateTime.now());
-        user.setUpdatedAt(LocalDateTime.now());
-        userMapper.insert(user);
-        log.info("用户注册成功 userId={} username={}", user.getId(), username);
-
-        // 5. 复制默认 Skill 到新用户
-        copyDefaultSkills(user.getId());
-
-        // 6. 设置 UserContext，使后续 getCurrentUser 能获取到当前用户
-        UserContext.setUserId(user.getId());
-
-        // 7. 生成 JWT，注册后自动登录
-        String token = jwtUtil.generateToken(user.getId(), user.getUsername());
-        log.info("注册后自动登录 userId={} username={}", user.getId(), username);
-        return token;
-    }
-
-    @Override
     public String login(String username, String password, String captchaToken, String captchaCode) {
         // 1. 验证码校验
         if (!captchaService.validate(captchaToken, captchaCode)) {
@@ -140,14 +95,65 @@ public class AuthServiceImpl implements AuthService {
         UserResp resp = new UserResp();
         resp.setId(user.getId());
         resp.setUsername(user.getUsername());
+        resp.setRole(user.getRole());
         resp.setLastLoginAt(user.getLastLoginAt());
         resp.setCreatedAt(user.getCreatedAt());
         return resp;
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public String createUser(String username, String password) {
+        // 0. 校验当前用户是否为管理员
+        checkAdmin();
+
+        // 1. 参数校验
+        if (!USERNAME_PATTERN.matcher(username).matches()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "用户名须为 2-20 位字母/数字/下划线");
+        }
+        if (!PASSWORD_PATTERN.matcher(password).matches()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "密码须至少 8 位，包含字母和数字");
+        }
+
+        // 2. 查重
+        Long exist = userMapper.selectCount(
+                new LambdaQueryWrapper<User>().eq(User::getUsername, username));
+        if (exist != null && exist > 0) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "用户名已存在");
+        }
+
+        // 3. 创建用户（默认角色为 user）
+        User user = new User();
+        user.setUsername(username);
+        user.setPasswordHash(PASSWORD_ENCODER.encode(password));
+        user.setStatus(1);
+        user.setRole("user");
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+        userMapper.insert(user);
+        log.info("管理员创建用户成功 userId={} username={}", user.getId(), username);
+
+        // 4. 复制默认 Skill 到新用户
+        copyDefaultSkills(user.getId());
+
+        // 5. 生成 JWT（用于该用户下次登录）
+        return jwtUtil.generateToken(user.getId(), user.getUsername());
+    }
+
+    /** 校验当前用户是否为管理员 */
+    private void checkAdmin() {
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            throw new BusinessException(ResultCode.UNAUTHORIZED, "未登录");
+        }
+        User admin = userMapper.selectById(userId);
+        if (admin == null || !"admin".equals(admin.getRole())) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "仅管理员可执行此操作");
+        }
+    }
+
     /** 复制模板 Skill 到指定用户 */
     private void copyDefaultSkills(Long targetUserId) {
-        // 模板 Skill 的 user_id 为 0（系统默认）
         List<Skill> templates = skillMapper.selectList(
                 new LambdaQueryWrapper<Skill>().eq(Skill::getUserId, 0L));
         if (templates.isEmpty()) {

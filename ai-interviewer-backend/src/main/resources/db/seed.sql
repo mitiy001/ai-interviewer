@@ -4,10 +4,11 @@
 
 USE ai_interviewer;
 
--- 默认用户（id=1，MVP 单用户）
-INSERT INTO `user` (id, username) VALUES
-  (1, 'default')
-ON DUPLICATE KEY UPDATE username = username;
+-- 默认管理员用户（id=1，role=admin，密码 BCrypt 哈希）
+-- 仅系统初始化时插入，已有记录则仅更新 role 确保是管理员
+INSERT INTO `user` (id, username, password_hash, role, status) VALUES
+  (1, 'admin', '$2a$12$SbyETxNyfF4Dl37b83VfPe0yFaisAshrKj8RXRkQJnYwjMKkuO/uy', 'admin', 1)
+ON DUPLICATE KEY UPDATE username = username, role = 'admin';
 
 -- Java Skill 判定标准（三个工程师等级：初级/中级/高级）
 -- user_id=0 表示系统模板，新用户注册时自动复制

@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 public class UserResp {
     private Long id;
     private String username;
+    private String role;
     private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
 }

@@ -44,30 +44,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /** 注册（注册后自动登录） */
-  async function register(
-    username: string,
-    password: string,
-    captchaToken: string,
-    captchaCode: string
-  ) {
-    loading.value = true
-    try {
-      const res = await http.post('/auth/register', {
-        username,
-        password,
-        captchaToken,
-        captchaCode,
-      })
-      const data = res.data.data
-      token.value = data.token
-      user.value = data.user
-      return true
-    } finally {
-      loading.value = false
-    }
-  }
-
   /** 获取当前用户信息 */
   async function fetchUser() {
     try {
@@ -88,5 +64,5 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
   }
 
-  return { user, token, loading, getCaptcha, login, register, fetchUser, logout }
+  return { user, token, loading, getCaptcha, login, fetchUser, logout }
 })

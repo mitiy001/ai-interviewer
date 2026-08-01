@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -8,35 +8,21 @@ const auth = useAuthStore()
 
 const username = ref('')
 const password = ref('')
-const captchaToken = ref('')
-const captchaCode = ref('')
-const captchaImage = ref('')
 const errorMsg = ref('')
 const submitting = ref(false)
 
-async function loadCaptcha() {
-  const result = await auth.getCaptcha()
-  captchaToken.value = result.token
-  captchaImage.value = result.image
-}
-
-onMounted(() => {
-  loadCaptcha()
-})
-
 async function handleLogin() {
-  if (!username.value || !password.value || !captchaCode.value) {
-    errorMsg.value = '请填写所有字段'
+  if (!username.value || !password.value) {
+    errorMsg.value = '请填写用户名和密码'
     return
   }
   submitting.value = true
   errorMsg.value = ''
   try {
-    await auth.login(username.value, password.value, captchaToken.value, captchaCode.value)
+    await auth.login(username.value, password.value)
     router.push('/')
   } catch (e: any) {
     errorMsg.value = e.response?.data?.message || e.message || '登录失败'
-    loadCaptcha()
   } finally {
     submitting.value = false
   }
@@ -69,25 +55,6 @@ async function handleLogin() {
             placeholder="请输入密码"
             autocomplete="current-password"
           />
-        </div>
-
-        <div class="form-group">
-          <label>验证码</label>
-          <div class="captcha-row">
-            <input
-              v-model="captchaCode"
-              type="text"
-              placeholder="输入验证码"
-              maxlength="4"
-            />
-            <img
-              v-if="captchaImage"
-              :src="captchaImage"
-              class="captcha-img"
-              @click="loadCaptcha"
-              title="点击刷新"
-            />
-          </div>
         </div>
 
         <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
@@ -167,24 +134,6 @@ async function handleLogin() {
   border-color: #4f6ef7;
 }
 
-.captcha-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.captcha-row input {
-  flex: 1;
-}
-
-.captcha-img {
-  height: 44px;
-  width: auto;
-  border-radius: 6px;
-  cursor: pointer;
-  border: 1px solid #eee;
-}
-
 .error-msg {
   color: #e74c3c;
   font-size: 13px;
@@ -219,15 +168,5 @@ async function handleLogin() {
   font-size: 13px;
   color: #888;
   margin-top: 24px;
-}
-
-.auth-link a {
-  color: #4f6ef7;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.auth-link a:hover {
-  text-decoration: underline;
 }
 </style>

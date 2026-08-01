@@ -1,6 +1,5 @@
 package com.aiinterviewer.controller;
 
-import com.aiinterviewer.common.CaptchaService;
 import com.aiinterviewer.common.JwtUtil;
 import com.aiinterviewer.common.Result;
 import com.aiinterviewer.dto.resp.UserResp;
@@ -16,7 +15,6 @@ import java.util.Map;
  * 用户认证接口
  * <p>
  * <ul>
- *   <li>GET  /api/auth/captcha       获取图形验证码</li>
  *   <li>POST /api/auth/login         登录</li>
  *   <li>POST /api/auth/logout        登出</li>
  *   <li>GET  /api/auth/me            获取当前用户信息</li>
@@ -28,28 +26,19 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
-    private final CaptchaService captchaService;
     private final JwtUtil jwtUtil;
-
-    @GetMapping("/captcha")
-    public Result<Map<String, String>> captcha() {
-        CaptchaService.CaptchaResult result = captchaService.generate();
-        return Result.ok(Map.of("token", result.token(), "image", result.imageBase64()));
-    }
 
     @PostMapping("/login")
     public Result<Map<String, Object>> login(@RequestBody Map<String, String> body,
                                               HttpServletResponse response) {
         String username = body.get("username");
         String password = body.get("password");
-        String captchaToken = body.get("captchaToken");
-        String captchaCode = body.get("captchaCode");
 
-        if (username == null || password == null || captchaToken == null || captchaCode == null) {
+        if (username == null || password == null) {
             return Result.fail(400, "参数不完整");
         }
 
-        String token = authService.login(username.trim(), password, captchaToken, captchaCode.trim());
+        String token = authService.login(username.trim(), password);
 
         // 设置 httpOnly Cookie
         Cookie cookie = new Cookie("auth_token", token);
@@ -98,4 +87,3 @@ public class AuthController {
         String token = authService.createUser(username.trim(), password);
         return Result.ok(Map.of("token", token, "username", username.trim()));
     }
-}

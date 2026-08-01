@@ -1,6 +1,5 @@
 package com.aiinterviewer.service.impl;
 
-import com.aiinterviewer.common.CaptchaService;
 import com.aiinterviewer.common.JwtUtil;
 import com.aiinterviewer.common.ResultCode;
 import com.aiinterviewer.common.UserContext;
@@ -41,41 +40,35 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserMapper userMapper;
     private final SkillMapper skillMapper;
-    private final CaptchaService captchaService;
     private final JwtUtil jwtUtil;
 
     @Override
-    public String login(String username, String password, String captchaToken, String captchaCode) {
-        // 1. 验证码校验
-        if (!captchaService.validate(captchaToken, captchaCode)) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "验证码错误或已过期");
-        }
-
-        // 2. 查找用户
+    public String login(String username, String password) {
+        // 1. 查找用户
         User user = userMapper.selectOne(
                 new LambdaQueryWrapper<User>().eq(User::getUsername, username));
         if (user == null) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "用户名或密码错误");
         }
 
-        // 3. 校验状态
+        // 2. 校验状态
         if (user.getStatus() == null || user.getStatus() != 1) {
             throw new BusinessException(ResultCode.FORBIDDEN, "账号已被禁用");
         }
 
-        // 4. 校验密码
+        // 3. 校验密码
         if (!PASSWORD_ENCODER.matches(password, user.getPasswordHash())) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "用户名或密码错误");
         }
 
-        // 5. 更新最后登录时间
+        // 4. 更新最后登录时间
         user.setLastLoginAt(LocalDateTime.now());
         userMapper.updateById(user);
 
-        // 6. 生成 JWT
+        // 5. 生成 JWT
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());
 
-        // 7. 设置 UserContext，使后续 getCurrentUser 能获取到当前用户
+        // 6. 设置 UserContext，使后续 getCurrentUser 能获取到当前用户
         UserContext.setUserId(user.getId());
 
         log.info("用户登录成功 userId={} username={}", user.getId(), username);
@@ -175,4 +168,3 @@ public class AuthServiceImpl implements AuthService {
         }
         log.info("已为 userId={} 复制 {} 条默认 Skill", targetUserId, templates.size());
     }
-}

@@ -32,7 +32,6 @@ public class AuthFilter extends OncePerRequestFilter {
     /** 公开接口（无需认证） */
     private static final Set<String> PUBLIC_PATHS = Set.of(
             "/api/auth/login",
-            "/api/auth/captcha",
             "/actuator/health"
     );
 
@@ -88,4 +87,3 @@ public class AuthFilter extends OncePerRequestFilter {
         }
         return null;
     }
-}

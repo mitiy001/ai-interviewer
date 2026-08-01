@@ -14,26 +14,16 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(null)
   const loading = ref(false)
 
-  /** 获取验证码 */
-  async function getCaptcha(): Promise<{ token: string; image: string }> {
-    const res = await http.get('/auth/captcha')
-    return res.data.data
-  }
-
   /** 登录 */
   async function login(
     username: string,
-    password: string,
-    captchaToken: string,
-    captchaCode: string
+    password: string
   ) {
     loading.value = true
     try {
       const res = await http.post('/auth/login', {
         username,
         password,
-        captchaToken,
-        captchaCode,
       })
       const data = res.data.data
       token.value = data.token
@@ -64,5 +54,5 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
   }
 
-  return { user, token, loading, getCaptcha, login, fetchUser, logout }
+  return { user, token, loading, login, fetchUser, logout }
 })

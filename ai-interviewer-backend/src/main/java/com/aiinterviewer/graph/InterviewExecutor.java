@@ -175,6 +175,8 @@ public class InterviewExecutor {
             OverAllState state = buildInitialState(record);
             int maxTurns = record.getMaxTurns() == null ? 5 : record.getMaxTurns();
 
+            // 开场前心跳，防 LLM 调用期间空闲断开
+            sendHeartbeat(emitter, session);
             // 开场白
             sendEvent(emitter, session, EV_PHASE, Map.of("phase", "OPENING"));
             Map<String, Object> r = openingNode.apply(state);
@@ -188,6 +190,8 @@ public class InterviewExecutor {
                 int turn = state.value(InterviewState.TURN_INDEX, 0);
                 if (turn >= maxTurns) break;
 
+                // 出题前心跳，防 LLM 调用期间空闲断开
+                sendHeartbeat(emitter, session);
                 // 出题
                 sendEvent(emitter, session, EV_PHASE, Map.of("phase", "QUESTION"));
                 r = questionNode.apply(state);
@@ -205,6 +209,8 @@ public class InterviewExecutor {
                 if (!session.active) break;
                 state.input(Map.of(InterviewState.USER_ANSWER, answer));
 
+                // 判定前心跳
+                sendHeartbeat(emitter, session);
                 // 判定
                 sendEvent(emitter, session, EV_PHASE, Map.of("phase", "JUDGE"));
                 r = judgeNode.apply(state);
@@ -223,6 +229,8 @@ public class InterviewExecutor {
                 return;
             }
 
+            // 总结前心跳
+            sendHeartbeat(emitter, session);
             // 总结
             sendEvent(emitter, session, EV_PHASE, Map.of("phase", "SUMMARY"));
             r = summaryNode.apply(state);
@@ -253,14 +261,24 @@ public class InterviewExecutor {
         }
     }
 
+    /** 心跳间隔（毫秒）：15 秒，防止代理/负载均衡器因空闲断开 SSE 连接 */
+    private static final long HEARTBEAT_INTERVAL_MS = 15_000;
+
     private String waitForAnswer(InterviewSession session) {
         // 清掉可能残留的旧回答，避免串轮
         session.answerQueue.clear();
         String answer = null;
         long deadline = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(ANSWER_TIMEOUT_MINUTES);
+        long lastHeartbeat = System.currentTimeMillis();
         while (session.active && answer == null && System.currentTimeMillis() < deadline) {
             try {
                 answer = session.answerQueue.poll(500, TimeUnit.MILLISECONDS);
+                // 等待期间定期发送心跳，防止代理/负载均衡器因空闲断开连接
+                long now = System.currentTimeMillis();
+                if (answer == null && now - lastHeartbeat >= HEARTBEAT_INTERVAL_MS) {
+                    lastHeartbeat = now;
+                    sendEventSafe(session.emitter, "heartbeat", Map.of("ts", now));
+                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
@@ -378,6 +396,12 @@ public class InterviewExecutor {
         }
     }
 
+    /** 发送心跳事件，保持 SSE 连接不被代理/负载均衡器断开 */
+    private void sendHeartbeat(SseEmitter emitter, InterviewSession session) {
+        if (!session.active) return;
+        sendEventSafe(emitter, "heartbeat", Map.of("ts", System.currentTimeMillis()));
+    }
+
     private static String text(Map<String, Object> result, String key) {
         Object v = result.get(key);
         return v == null ? "" : String.valueOf(v);
@@ -400,4 +424,4 @@ public class InterviewExecutor {
                 new java.util.concurrent.LinkedBlockingQueue<>();
         volatile boolean active = true;
     }
-}
+ject> result, String key) {\n        Object v = result.get(key);\n        return v == null ? \"\" : String.valueOf(v);\n    }\n\n    private static int toInt(Object v) {\n        if (v == null) return 0;\n        if (v instanceof Number n) return n.intValue();\n        try {\n            return Integer.parseInt(String.valueOf(v));\n        } catch (Exception e) {\n            return 0;\n        }\n    }\n\n    /** 单面试会话：emitter + 回答队列 + 活动标志 */\n    private static class InterviewSession {\n        volatile SseEmitter emitter;\n        final java.util.concurrent.LinkedBlockingQueue<String> answerQueue =\n                new java.util.concurrent.LinkedBlockingQueue<>();\n        volatile boolean active = true;\n    }\n}"}]

@@ -1,1 +1,73 @@
-aW1wb3J0IHsgY3JlYXRlUm91dGVyLCBjcmVhdGVXZWJIaXN0b3J5IH0gZnJvbSAndnVlLXJvdXRlcicKaW1wb3J0IHsgdXNlQXV0aFN0b3JlIH0gZnJvbSAnQC9zdG9yZXMvYXV0aCcKCmNvbnN0IHJvdXRlciA9IGNyZWF0ZVJvdXRlcih7CiAgaGlzdG9yeTogY3JlYXRlV2ViSGlzdG9yeSgpLAogIHJvdXRlczogWwogICAgewogICAgICBwYXRoOiAnL2xvZ2luJywKICAgICAgbmFtZTogJ2xvZ2luJywKICAgICAgbWV0YTogeyBndWVzdDogdHJ1ZSB9LAogICAgICBjb21wb25lbnQ6ICgpID0+IGltcG9ydCgnQC92aWV3cy9Mb2dpbi52dWUnKSwKICAgIH0sCiAgICB7IHBhdGg6ICcvJywgbmFtZTogJ2hvbWUnLCBjb21wb25lbnQ6ICgpID0+IGltcG9ydCgnQC92aWV3cy9Ib21lLnZ1ZScpIH0sCiAgICB7CiAgICAgIHBhdGg6ICcvdXBsb2FkJywKICAgICAgbmFtZTogJ3VwbG9hZCcsCiAgICAgIGNvbXBvbmVudDogKCkgPT4gaW1wb3J0KCdAL3ZpZXdzL1VwbG9hZC52dWUnKSwKICAgIH0sCiAgICB7CiAgICAgIHBhdGg6ICcvaW50ZXJ2aWV3JywKICAgICAgbmFtZTogJ2ludGVydmlldycsCiAgICAgIGNvbXBvbmVudDogKCkgPT4gaW1wb3J0KCdAL3ZpZXdzL0ludGVydmlldy52dWUnKSwKICAgIH0sCiAgICB7CiAgICAgIHBhdGg6ICcvcmVwb3J0JywKICAgICAgbmFtZTogJ3JlcG9ydCcsCiAgICAgIGNvbXBvbmVudDogKCkgPT4gaW1wb3J0KCdAL3ZpZXdzL1JlcG9ydC52dWUnKSwKICAgIH0sCiAgICB7CiAgICAgIHBhdGg6ICcvcHJhY3RpY2UnLAogICAgICBuYW1lOiAncHJhY3RpY2UnLAogICAgICBjb21wb25lbnQ6ICgpID0+IGltcG9ydCgnQC92aWV3cy9QcmFjdGljZS52dWUnKSwKICAgIH0sCiAgICB7CiAgICAgIHBhdGg6ICcvc2V0dGluZ3MnLAogICAgICBuYW1lOiAnc2V0dGluZ3MnLAogICAgICBjb21wb25lbnQ6ICgpID0+IGltcG9ydCgnQC92aWV3cy9TZXR0aW5ncy52dWUnKSwKICAgIH0sCiAgICB7CiAgICAgIHBhdGg6ICcvYWRtaW4vdXNlcnMnLAogICAgICBuYW1lOiAnYWRtaW4tdXNlcnMnLAogICAgICBtZXRhOiB7IGFkbWluOiB0cnVlIH0sCiAgICAgIGNvbXBvbmVudDogKCkgPT4gaW1wb3J0KCdAL3ZpZXdzL1VzZXJNYW5hZ2UudnVlJyksCiAgICB9LAogIF0sCn0pCgovLyDot6/lm77lj7jljYo677yI5pyq55m75b2V55So5oi35Y+q6IO95Lq/6ZeuIGd1ZXN0IOmhteeahApyb3V0ZXIuYmVmb3JlRWFjaChhc3luYyAodG8pID0+IHsKICBjb25zdCBhdXRoID0gdXNlQXV0aFN0b3JlKCkKCiAgLy8g1byA5K6/6I635Y+W55So5oi35L+h5oGv77yI5aaC5p6cIENvb2tpZSDmlYjmnpzlvZPoh6rlr7nnsbvlip7nmbvlvZXnirbmgIEpCiAgaWYgKCFhdXRoLnVzZXIpIHsKICAgIGF3YWl0IGF1dGguZmV0Y2hVc2VyKCkKICB9CgogIC8vIOacqueZu+W9leS4lOebtOaIl+ebtOmht+WPr+S4jeaYr2d1ZXN0IOmht+KAluizt+iyvOeZu+W9lQogIGlmICghYXV0aC51c2VyICYmICF0by5tZXRhLmd1ZXN0KSB7CiAgICByZXR1cm4geyBwYXRoOiAnL2xvZ2luJywgcXVlcnk6IHsgcmVkaXJlY3Q6IHRvLmZ1bGxQYXRoIH0gfQogIH0KCiAgLy8g5bey55m75b2V55So5oi36L+Q6ZeuIGd1ZXN0IOmhtOKAhuizt+i3s+mmlumhtQogIGlmIChhdXRoLnVzZXIgJiYgdG8ubWV0YS5ndWVzdCkgewogICAgcmV0dXJuIHsgcGF0aDogJy8nIH0KICB9CgogIC8vIOmdnuW6lueuoeeQhuWQmOiuou+9huWPr+ebtOeuoeeQhuWQmOmht+KAlui3s+i3s+mmlumhtQogIGlmICh0by5tZXRhLmFkbWluICYmICFhdXRoLmlzQWRtaW4pIHsKICAgIHJldHVybiB7IHBhdGg6ICcvJyB9CiAgfQp9KQoKZXhwb3J0IGRlZmF1bHQgcm91dGVy
+import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    {
+      path: '/login',
+      name: 'login',
+      meta: { guest: true },
+      component: () => import('@/views/Login.vue'),
+    },
+    { path: '/', name: 'home', component: () => import('@/views/Home.vue') },
+    {
+      path: '/upload',
+      name: 'upload',
+      component: () => import('@/views/Upload.vue'),
+    },
+    {
+      path: '/interview',
+      name: 'interview',
+      component: () => import('@/views/Interview.vue'),
+    },
+    {
+      path: '/report',
+      name: 'report',
+      component: () => import('@/views/Report.vue'),
+    },
+    {
+      path: '/practice',
+      name: 'practice',
+      component: () => import('@/views/Practice.vue'),
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('@/views/Settings.vue'),
+    },
+    {
+      path: '/admin/users',
+      name: 'admin-users',
+      meta: { admin: true },
+      component: () => import('@/views/UserManage.vue'),
+    },
+  ],
+})
+
+// 路由守卫：未登录用户只能访问 guest 页面
+router.beforeEach(async (to) => {
+  const auth = useAuthStore()
+
+  // 尝试获取用户信息（如果 Cookie 有效则自动恢复登录状态）
+  if (!auth.user) {
+    await auth.fetchUser()
+  }
+
+  // 未登录且目标页面不是 guest 页 → 跳转登录
+  if (!auth.user && !to.meta.guest) {
+    return { path: '/login', query: { redirect: to.fullPath } }
+  }
+
+  // 已登录用户访问 guest 页 → 跳转首页
+  if (auth.user && to.meta.guest) {
+    return { path: '/' }
+  }
+
+  // 非管理员访问 admin 页面 → 跳转首页
+  if (to.meta.admin && !auth.isAdmin) {
+    return { path: '/' }
+  }
+})
+
+export default router

@@ -35,32 +35,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-/**
- * 面试执行协调器：把 graph 节点编排为 SSE 交互式主循环。
- * <p>
- * 由于 question → judge 之间需要等待用户 POST 回答（无法在一次 graph.invoke 内完成），
- * 这里采用 <b>手动驱动节点 + state.input 合并</b> 的方式：
- * <pre>
- * opening → push ai
- * loop:
- *   question → push ai + wait_answer
- *   [阻塞等待 POST /answer]
- *   judge → push judge + ai
- *   (turn >= maxTurns ? break : continue)
- * summary → push done
- * </pre>
- * state.input() 按 KeyStrategy 合并（AppendStrategy 会正确累积 SCORES/JUDGEMENTS），
- * 与 graph 引擎合并语义一致（已被 SummaryNodeTest 验证）。
- * <p>
- * 所有 LLM 调用仍走 graph 节点（OpeningNode/QuestionNode/JudgeNode/SummaryNode），
- * 不绕过 graph 直接调 LLM，符合 spec 约束。
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class InterviewExecutor {
 
-    /** SSE 事件名 */
     public static final String EV_PHASE = "phase";
     public static final String EV_AI = "ai";
     public static final String EV_WAIT_ANSWER = "wait_answer";
@@ -68,9 +47,7 @@ public class InterviewExecutor {
     public static final String EV_DONE = "done";
     public static final String EV_ERROR = "error";
 
-    /** 单轮回答最长等待时间（分钟） */
     private static final long ANSWER_TIMEOUT_MINUTES = 10;
-    /** SseEmitter 总超时（毫秒）：2 小时 */
     private static final long SSE_TIMEOUT_MS = 2 * 60 * 60 * 1000L;
 
     private final OpeningNode openingNode;
@@ -84,20 +61,13 @@ public class InterviewExecutor {
     private final ReportService reportService;
     private final ObjectMapper objectMapper;
 
-    /** interviewId → 会话 */
     private final Map<Long, InterviewSession> sessions = new ConcurrentHashMap<>();
-    /** 异步执行线程池 */
     private final ExecutorService workerPool = Executors.newCachedThreadPool(r -> {
         Thread t = new Thread(r, "interview-executor");
         t.setDaemon(true);
         return t;
     });
 
-    /**
-     * 创建并返回一个 SseEmitter，同时在后台异步驱动面试主循环。
-     * <p>
-     * 若该面试已有活动会话，抛业务异常防止重复连接。
-     */
     public SseEmitter startStream(Long interviewId) {
         InterviewRecord record = mustLoadRunning(interviewId);
 
@@ -125,9 +95,6 @@ public class InterviewExecutor {
         return emitter;
     }
 
-    /**
-     * 提交用户回答。若没有活动会话或会话已结束，抛业务异常。
-     */
     public void submitAnswer(Long interviewId, String answer) {
         InterviewSession session = sessions.get(interviewId);
         if (session == null || !session.active) {
@@ -137,36 +104,19 @@ public class InterviewExecutor {
         session.answerQueue.offer(answer);
     }
 
-    /**
-     * 查询指定面试的 SSE 会话是否仍活跃。
-     * 用于删除接口判断 RUNNING 状态的面试是否真的还在进行。
-     */
     public boolean isSessionActive(Long interviewId) {
         InterviewSession session = sessions.get(interviewId);
         return session != null && session.active;
     }
 
-    /**
-     * 显式中断面试：设置 session.active=false 让主循环退出，并同步标记状态为 ABORTED。
-     * <p>
-     * 适用场景：
-     *   - 用户点击「退出」按钮主动离开面试
-     *   - 删除接口发现 RUNNING 状态但会话已不活跃时自动调用
-     * <p>
-     * 若面试已结束/无活动会话，本方法是幂等的（不会重复修改已终结状态）。
-     */
     public void abort(Long interviewId) {
         InterviewSession session = sessions.get(interviewId);
         if (session != null) {
             session.active = false;
-            // 不在这里 remove，让 runLoop 的 finally 统一清理，避免并发移除导致主循环异常
         }
-        // 同步更新数据库状态为 ABORTED（若当前仍是 RUNNING）
         markStatus(interviewId, "ABORTED", null);
         log.info("中断面试 interviewId={} sessionExists={}", interviewId, session != null);
     }
-
-    // ===== 主循环 =====
 
     private void runLoop(InterviewSession session, InterviewRecord record) {
         Long interviewId = record.getId();
@@ -175,9 +125,7 @@ public class InterviewExecutor {
             OverAllState state = buildInitialState(record);
             int maxTurns = record.getMaxTurns() == null ? 5 : record.getMaxTurns();
 
-            // 开场前心跳，防 LLM 调用期间空闲断开
             sendHeartbeat(emitter, session);
-            // 开场白
             sendEvent(emitter, session, EV_PHASE, Map.of("phase", "OPENING"));
             Map<String, Object> r = openingNode.apply(state);
             state.input(r);
@@ -185,14 +133,11 @@ public class InterviewExecutor {
                     "content", text(r, InterviewState.AI_OUTPUT),
                     "role", "ai"));
 
-            // 多轮问答
             while (session.active) {
                 int turn = state.value(InterviewState.TURN_INDEX, 0);
                 if (turn >= maxTurns) break;
 
-                // 出题前心跳，防 LLM 调用期间空闲断开
                 sendHeartbeat(emitter, session);
-                // 出题
                 sendEvent(emitter, session, EV_PHASE, Map.of("phase", "QUESTION"));
                 r = questionNode.apply(state);
                 state.input(r);
@@ -204,14 +149,11 @@ public class InterviewExecutor {
                 sendEvent(emitter, session, EV_WAIT_ANSWER, Map.of(
                         "turn", currentTurn, "questionId", qid == null ? 0 : qid));
 
-                // 等待用户回答
                 String answer = waitForAnswer(session);
                 if (!session.active) break;
                 state.input(Map.of(InterviewState.USER_ANSWER, answer));
 
-                // 判定前心跳
                 sendHeartbeat(emitter, session);
-                // 判定
                 sendEvent(emitter, session, EV_PHASE, Map.of("phase", "JUDGE"));
                 r = judgeNode.apply(state);
                 state.input(r);
@@ -224,14 +166,11 @@ public class InterviewExecutor {
             }
 
             if (!session.active) {
-                // 中途断开，不继续 summary
                 markStatus(interviewId, "ABORTED", null);
                 return;
             }
 
-            // 总结前心跳
             sendHeartbeat(emitter, session);
-            // 总结
             sendEvent(emitter, session, EV_PHASE, Map.of("phase", "SUMMARY"));
             r = summaryNode.apply(state);
             state.input(r);
@@ -242,7 +181,6 @@ public class InterviewExecutor {
             sendEvent(emitter, session, EV_DONE, Map.of(
                     "totalScore", totalScore, "report", report));
 
-            // 持久化报告
             try {
                 reportService.save(interviewId, totalScore, report);
             } catch (Exception e) {
@@ -261,11 +199,9 @@ public class InterviewExecutor {
         }
     }
 
-    /** 心跳间隔（毫秒）：15 秒，防止代理/负载均衡器因空闲断开 SSE 连接 */
     private static final long HEARTBEAT_INTERVAL_MS = 15_000;
 
     private String waitForAnswer(InterviewSession session) {
-        // 清掉可能残留的旧回答，避免串轮
         session.answerQueue.clear();
         String answer = null;
         long deadline = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(ANSWER_TIMEOUT_MINUTES);
@@ -273,7 +209,6 @@ public class InterviewExecutor {
         while (session.active && answer == null && System.currentTimeMillis() < deadline) {
             try {
                 answer = session.answerQueue.poll(500, TimeUnit.MILLISECONDS);
-                // 等待期间定期发送心跳，防止代理/负载均衡器因空闲断开连接
                 long now = System.currentTimeMillis();
                 if (answer == null && now - lastHeartbeat >= HEARTBEAT_INTERVAL_MS) {
                     lastHeartbeat = now;
@@ -290,8 +225,6 @@ public class InterviewExecutor {
         }
         return answer;
     }
-
-    // ===== 初始状态构建 =====
 
     private OverAllState buildInitialState(InterviewRecord record) {
         OverAllState state = InterviewState.newState();
@@ -342,8 +275,6 @@ public class InterviewExecutor {
         }
         return arr.toString();
     }
-
-    // ===== 辅助 =====
 
     private InterviewRecord mustLoadRunning(Long interviewId) {
         InterviewRecord record = interviewRecordMapper.selectById(interviewId);
@@ -396,7 +327,6 @@ public class InterviewExecutor {
         }
     }
 
-    /** 发送心跳事件，保持 SSE 连接不被代理/负载均衡器断开 */
     private void sendHeartbeat(SseEmitter emitter, InterviewSession session) {
         if (!session.active) return;
         sendEventSafe(emitter, "heartbeat", Map.of("ts", System.currentTimeMillis()));
@@ -417,11 +347,10 @@ public class InterviewExecutor {
         }
     }
 
-    /** 单面试会话：emitter + 回答队列 + 活动标志 */
     private static class InterviewSession {
         volatile SseEmitter emitter;
         final java.util.concurrent.LinkedBlockingQueue<String> answerQueue =
                 new java.util.concurrent.LinkedBlockingQueue<>();
         volatile boolean active = true;
     }
-ject> result, String key) {\n        Object v = result.get(key);\n        return v == null ? \"\" : String.valueOf(v);\n    }\n\n    private static int toInt(Object v) {\n        if (v == null) return 0;\n        if (v instanceof Number n) return n.intValue();\n        try {\n            return Integer.parseInt(String.valueOf(v));\n        } catch (Exception e) {\n            return 0;\n        }\n    }\n\n    /** 单面试会话：emitter + 回答队列 + 活动标志 */\n    private static class InterviewSession {\n        volatile SseEmitter emitter;\n        final java.util.concurrent.LinkedBlockingQueue<String> answerQueue =\n                new java.util.concurrent.LinkedBlockingQueue<>();\n        volatile boolean active = true;\n    }\n}"}]
+}

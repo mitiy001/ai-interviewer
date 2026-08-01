@@ -1,5 +1,8 @@
 -- 仅建表（不含 CREATE DATABASE 和 USE），用于 Spring Boot 自动初始化
 
+-- ⚠ 已有库升级语句（老库必须执行，新库已有该列时将跳过，continue-on-error 会忽略重复列错误）
+ALTER TABLE `user` ADD COLUMN `role` VARCHAR(16) NOT NULL DEFAULT 'user' COMMENT 'admin/user' AFTER `status`;
+
 -- 1. 用户表
 CREATE TABLE IF NOT EXISTS `user` (
   id             BIGINT NOT NULL AUTO_INCREMENT,
@@ -136,4 +139,4 @@ CREATE TABLE IF NOT EXISTS interview_report (
   generated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uk_interview (interview_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='面试报告';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='面试报告'CURRENT_TIMESTAMP,\n  PRIMARY KEY (id),\n  UNIQUE KEY uk_interview (interview_id)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='面试报告';\n"}]

@@ -1,25 +1,24 @@
 import { ref } from 'vue'
-import http from '@/api/http'
 
 /**
- * 语音转文字工具：浏览器 MediaRecorder 录音 + 后端 DashScope ASR 识别。
+ * 语音转文字工具：浏览器原生 SpeechRecognition API（Web Speech API）。
  *
- * 放弃浏览器原生 SpeechRecognition（Chromium 内核走 Google 服务器，国内被墙）。
- * 改用 MediaRecorder 录制音频 → 上传后端 /api/stt → 后端调用阿里云
- * DashScope SenseVoice/Paraformer 识别 → 返回文本。
+ * 放弃 MediaRecorder 录音 + 后端 ASR 的方案（外部 API 易失效/密钥过期），
+ * 改用浏览器原生 SpeechRecognition（Chrome / Edge 内置），实时识别无需后端参与。
  *
- * 交互流程：点击开始 → 持续录音 → 点击结束 → 上传识别 → 返回文本
+ * 交互流程：点击开始 → 实时语音识别 → 点击结束 → 返回识别文本
  */
 
-const isSupported =
+// 浏览器原生 SpeechRecognition 构造函数（使用 any 避免 TS 类型报错）
+const SpeechRecognitionCtor: any =
   typeof window !== 'undefined' &&
-  typeof navigator !== 'undefined' &&
-  typeof navigator.mediaDevices !== 'undefined' &&
-  typeof MediaRecorder !== 'undefined'
+  ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+
+const isSupported = !!SpeechRecognitionCtor
 
 // ===== 响应式状态 =====
 const recording = ref(false)
-/** 识别中（上传后端并等待结果） */
+/** 识别中 */
 const recognizing = ref(false)
 /** 识别结果文本 */
 const finalText = ref('')
@@ -27,146 +26,132 @@ const finalText = ref('')
 const errorMsg = ref('')
 
 // ===== 内部状态 =====
-let mediaRecorder: MediaRecorder | null = null
-let audioChunks: Blob[] = []
-let mediaStream: MediaStream | null = null
-
-/** 选择浏览器支持的 mimeType */
-function pickMimeType(): string {
-  const candidates = [
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/ogg;codecs=opus',
-    'audio/mp4',
-  ]
-  for (const t of candidates) {
-    if (MediaRecorder.isTypeSupported(t)) return t
-  }
-  return ''
-}
+let recognition: any = null
+/** 累积的最终识别文本（每段 final result 追加） */
+let accumulatedText = ''
+/** 用来缓存 stopRecognition 的 resolve，以便在 result 或 end 事件中返回 */
+let pendingResolve: ((text: string) => void) | null = null
 
 // ===== 对外 API =====
 
-/** 开始录音 */
+/** 开始语音识别 */
 export async function startRecognition(): Promise<void> {
   if (!isSupported) {
-    errorMsg.value = '当前浏览器不支持录音，请使用 Chrome / Edge'
+    errorMsg.value = '当前浏览器不支持语音识别，请使用 Chrome / Edge'
     return
   }
   if (recording.value) return
+
   errorMsg.value = ''
   finalText.value = ''
+  accumulatedText = ''
+
   try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    const mimeType = pickMimeType()
-    mediaRecorder = mimeType
-      ? new MediaRecorder(mediaStream, { mimeType })
-      : new MediaRecorder(mediaStream)
-    audioChunks = []
+    recognition = new SpeechRecognitionCtor()
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.lang = 'zh-CN'
 
-    mediaRecorder.ondataavailable = (e: BlobEvent) => {
-      if (e.data.size > 0) audioChunks.push(e.data)
+    recognition.onstart = () => {
+      recording.value = true
+      recognizing.value = false
     }
 
-    mediaRecorder.start()
-    recording.value = true
+    recognition.onresult = (event: any) => {
+      // 取最后一段结果
+      const last = event.results[event.results.length - 1]
+      if (last.isFinal) {
+        const text = last[0].transcript.trim()
+        if (text) {
+          accumulatedText += (accumulatedText ? '' : '') + text
+        }
+      }
+    }
+
+    recognition.onerror = (event: any) => {
+      recording.value = false
+      recognizing.value = false
+      if (event.error === 'not-allowed') {
+        errorMsg.value = '麦克风权限被拒绝，请在浏览器设置中允许'
+      } else if (event.error === 'no-speech') {
+        errorMsg.value = '未检测到语音'
+      } else {
+        errorMsg.value = '语音识别错误: ' + event.error
+      }
+      // 如果有等待的 resolve，用空字符串解决
+      if (pendingResolve) {
+        pendingResolve(accumulatedText)
+        pendingResolve = null
+      }
+    }
+
+    recognition.onend = () => {
+      recording.value = false
+      // 如果识别自然结束（非手动停止），用已累积的文本 resolve
+      if (pendingResolve) {
+        pendingResolve(accumulatedText)
+        pendingResolve = null
+      }
+    }
+
+    recognition.start()
   } catch (e: any) {
-    if (e.name === 'NotAllowedError') {
-      errorMsg.value = '麦克风权限被拒绝，请在浏览器设置中允许'
-    } else if (e.name === 'NotFoundError') {
-      errorMsg.value = '未检测到麦克风设备'
-    } else {
-      errorMsg.value = '录音启动失败: ' + (e.message || e.name)
-    }
+    errorMsg.value = '语音识别启动失败: ' + (e.message || e.name)
   }
 }
 
-/** 停止录音并上传识别，返回识别文本 */
+/** 停止语音识别并返回最终识别文本 */
 export async function stopRecognition(): Promise<string> {
-  if (!mediaRecorder || !recording.value) return finalText.value
+  if (!recognition || !recording.value) {
+    return finalText.value || accumulatedText
+  }
 
   return new Promise<string>((resolve) => {
-    mediaRecorder!.onstop = async () => {
-      recording.value = false
-      // 释放麦克风
-      if (mediaStream) {
-        mediaStream.getTracks().forEach((t) => t.stop())
-        mediaStream = null
-      }
-
-      if (audioChunks.length === 0) {
-        errorMsg.value = '未录制到音频'
-        resolve('')
-        return
-      }
-
-      const mimeType = mediaRecorder?.mimeType || 'audio/webm'
-      const blob = new Blob(audioChunks, { type: mimeType })
-      const text = await uploadAndRecognize(blob)
-      finalText.value = text
-      resolve(text)
+    pendingResolve = resolve
+    try {
+      recognition!.stop()
+    } catch (e: any) {
+      // stop 可能抛异常（如已结束），直接用已累积文本 resolve
+      pendingResolve = null
+      resolve(accumulatedText)
     }
-    mediaRecorder!.stop()
+  }).then((text) => {
+    finalText.value = text
+    recognizing.value = false
+    recognition = null
+    return text
   })
 }
 
-/** 中止录音（丢弃结果） */
+/** 中止语音识别（丢弃结果） */
 export function abortRecognition(): void {
-  if (mediaRecorder && recording.value) {
-    mediaRecorder.onstop = null
-    mediaRecorder.stop()
+  if (recognition) {
+    try {
+      recognition.onend = null
+      recognition.onerror = null
+      recognition.onresult = null
+      recognition.abort()
+    } catch (e: any) {
+      // 忽略 abort 异常
+    }
+    recognition = null
   }
-  if (mediaStream) {
-    mediaStream.getTracks().forEach((t) => t.stop())
-    mediaStream = null
-  }
-  mediaRecorder = null
-  audioChunks = []
+  pendingResolve = null
   recording.value = false
   recognizing.value = false
+  accumulatedText = ''
   finalText.value = ''
 }
 
-/** 上传音频到后端识别 */
-async function uploadAndRecognize(blob: Blob): Promise<string> {
-  recognizing.value = true
-  errorMsg.value = ''
-  try {
-    const form = new FormData()
-    const ext = blob.type.includes('webm')
-      ? 'webm'
-      : blob.type.includes('ogg')
-        ? 'ogg'
-        : blob.type.includes('mp4')
-          ? 'mp4'
-          : 'wav'
-    form.append('file', blob, `audio.${ext}`)
-
-    const resp = await http.post('/stt', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 90000, // 识别可能较慢，放宽到 90s
-    })
-    // 后端返回 { text: "..." }
-    const data = resp.data
-    const text = typeof data === 'string' ? data : (data?.text || data?.data?.text || '')
-    return (text || '').trim()
-  } catch (e: any) {
-    const msg = e?.response?.data?.message || e.message || '语音识别失败'
-    errorMsg.value = msg
-    return ''
-  } finally {
-    recognizing.value = false
-  }
-}
-
-/** 重置状态（提交后调用） */
+/** 重置文本状态（提交后调用） */
 export function resetText(): void {
   finalText.value = ''
+  accumulatedText = ''
 }
 
 /** 获取当前全部文本 */
 export function getCurrentText(): string {
-  return finalText.value.trim()
+  return finalText.value || accumulatedText
 }
 
 export const sttSupported = isSupported

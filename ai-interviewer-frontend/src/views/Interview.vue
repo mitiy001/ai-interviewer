@@ -92,6 +92,7 @@ async function loadList() {
     banks.value = b
     skills.value = s
     models.value = m
+    // 默认选中最新
     if (r.length) startForm.resumeId = r[0].id
     if (b.length) startForm.bankId = b[0].id
     if (s.length) {
@@ -145,7 +146,8 @@ function connectSse(id: number) {
     eventSource = null
   }
   const url = InterviewApi.streamUrl(id)
-  const es = new EventSource(url)
+  // withCredentials: true 确保跨域时携带 httpOnly Cookie（JWT 认证）
+  const es = new EventSource(url, { withCredentials: true })
   eventSource = es
 
   es.addEventListener('phase', (e) => {
@@ -184,6 +186,7 @@ function connectSse(id: number) {
 
   es.addEventListener('judge', (e) => {
     const data = JSON.parse((e as MessageEvent).data)
+    // 找到最近一条 user 消息附加分数；同时单独推一条 system 评语
     const lastUser = [...messages.value].reverse().find((m) => m.role === 'user')
     if (lastUser) {
       lastUser.score = data.score
@@ -214,6 +217,8 @@ function connectSse(id: number) {
   })
 
   es.addEventListener('error', (e) => {
+    // EventSource 在连接关闭时也会触发 error，需要区分
+    // 若已经 finished，则忽略
     if (finished.value) return
     const ev = e as MessageEvent
     const msg = ev.data
@@ -227,6 +232,7 @@ function connectSse(id: number) {
       : 'SSE 连接异常或中断'
     errorMsg.value = msg
     waitingAnswer.value = false
+    // 主动关闭避免 EventSource 无限重连
     es.close()
     eventSource = null
   })
@@ -251,12 +257,14 @@ async function sendAnswer() {
   }
 }
 
+/** 切换麦克风录音：未录音时开始，录音中时停止并把结果填入输入框 */
 async function toggleMic() {
   if (!sttSupported) {
     errorMsg.value = '当前浏览器不支持语音识别，请使用 Chrome / Edge'
     return
   }
   if (sttRecording.value) {
+    // 停止录音并等待后端识别结果
     const text = await stopRecognition()
     if (text) answerInput.value = text
   } else {
@@ -279,10 +287,12 @@ async function exitInterview() {
     eventSource = null
   }
   ttsCancel()
+  // 通知后端中断面试，同步更新状态为 ABORTED，避免 RUNNING 残留导致无法删除
   if (abortId !== null && !finished.value) {
     try {
       await InterviewApi.abort(abortId)
     } catch (e: any) {
+      // 中断失败不阻塞退出流程，后端删除接口仍会兜底处理
       console.warn('[Interview] 中断面试失败:', e?.message || e)
     }
   }
@@ -314,9 +324,10 @@ onUnmounted(() => {
   if (eventSource) eventSource.close()
   ttsCancel()
   abortRecognition()
+  // 路由切换时也通知后端中断（fire-and-forget，不阻塞卸载）
   const abortId = interviewId.value
   if (abortId !== null && !finished.value) {
-    InterviewApi.abort(abortId).catch(() => { })
+    InterviewApi.abort(abortId).catch(() => { /* 忽略，删除接口会兜底 */ })
   }
 })
 </script>
@@ -325,6 +336,7 @@ onUnmounted(() => {
   <div class="col">
     <p v-if="errorMsg" class="error-text">{{ errorMsg }}</p>
 
+    <!-- 未开始面试：列表 + 启动表单 -->
     <template v-if="interviewId === null">
       <div class="card">
         <div class="row" style="justify-content: space-between;">
@@ -335,20 +347,20 @@ onUnmounted(() => {
         </div>
         <div class="row row-wrap" style="margin-top: 16px; gap: 16px;">
           <div class="form-group" style="flex: 1; min-width: 220px;">
-            <label>简历（可选）</label>
+            <label>简历（可选，不使用则仅依据题库面试）</label>
             <select v-model="startForm.resumeId" class="input">
               <option :value="undefined">不使用简历</option>
               <option v-for="r in resumes" :key="r.id" :value="r.id">{{ r.filename }}</option>
             </select>
           </div>
           <div class="form-group" style="flex: 1; min-width: 220px;">
-            <label>题库</label>
+            <label>题库（留空使用最新）</label>
             <select v-model="startForm.bankId" class="input">
               <option v-for="b in banks" :key="b.id" :value="b.id">{{ b.name }} ({{ b.questionCount }}题)</option>
             </select>
           </div>
           <div class="form-group" style="flex: 1; min-width: 220px;">
-            <label>Skill</label>
+            <label>面试等级 / Skill</label>
             <select v-model="startForm.skillId" class="input">
               <option v-for="s in skills" :key="s.id" :value="s.id">
                 {{ s.name }}{{ s.isActive === 1 ? '（已激活）' : '' }}
@@ -407,6 +419,7 @@ onUnmounted(() => {
       </div>
     </template>
 
+    <!-- 面试中：聊天界面 -->
     <template v-else>
       <div class="card chat-card">
         <div class="chat-header">
@@ -520,6 +533,7 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+/* ===== 头部 ===== */
 .chat-header {
   display: flex;
   justify-content: space-between;
@@ -590,6 +604,7 @@ onUnmounted(() => {
   animation: pulse 1s ease-in-out infinite;
 }
 
+/* ===== 消息列表 ===== */
 .chat-body {
   flex: 1;
   overflow-y: auto;
@@ -619,6 +634,7 @@ onUnmounted(() => {
   justify-content: center;
 }
 
+/* 打字三点动画 */
 .typing-dots {
   display: inline-flex;
   gap: 4px;
@@ -641,6 +657,7 @@ onUnmounted(() => {
   animation-delay: 0.4s;
 }
 
+/* ===== 消息气泡 ===== */
 .chat-msg {
   display: flex;
   gap: 10px;
@@ -762,6 +779,7 @@ onUnmounted(() => {
   opacity: 0.8;
 }
 
+/* ===== 输入区 ===== */
 .chat-input {
   display: flex;
   flex-direction: column;
@@ -791,6 +809,7 @@ onUnmounted(() => {
   padding: 0 18px;
 }
 
+/* 麦克风按钮 */
 .mic-btn {
   display: inline-flex;
   align-items: center;
@@ -822,6 +841,7 @@ onUnmounted(() => {
   font-size: 15px;
   line-height: 1;
 }
+/* 录音中脉动指示 */
 .mic-pulse {
   width: 10px;
   height: 10px;
@@ -840,14 +860,17 @@ onUnmounted(() => {
   margin: 0;
 }
 
+/* 语音播报开启态高亮 */
 .tts-on {
   background: var(--success-light);
   border-color: var(--success-border);
   color: var(--success);
 }
 
+/* ===== 移动端响应式 ===== */
 @media (max-width: 768px) {
   .chat-card {
+    /* dvh: 动态视口高度，解决安卓浏览器地址栏遮挡问题 */
     height: calc(100dvh - 120px);
     padding: 12px;
   }
@@ -883,6 +906,7 @@ onUnmounted(() => {
   }
 }
 
+/* ===== 历史记录表格：限高 + 表头吸顶 + 横向滚动 ===== */
 .history-table-wrap {
   max-height: 420px;
   overflow-y: auto;
@@ -890,20 +914,25 @@ onUnmounted(() => {
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: var(--radius-md, 8px);
 }
+/* 表头吸顶：滚动时表头固定在顶部 */
 .history-table-wrap .table thead th {
   position: sticky;
   top: 0;
   z-index: 1;
   background: var(--bg-secondary, #f9fafb);
+  /* 兼容部分浏览器：sticky 时 border 会消失，用 box-shadow 模拟下边框 */
   box-shadow: inset 0 -1px 0 var(--border-color, #e5e7eb);
 }
+/* 确保单元格不换行导致行高跳动 */
 .history-table-wrap .table td {
   white-space: nowrap;
 }
+/* 时间列允许换行，避免过长时间戳撑宽列 */
 .history-table-wrap .table td.muted {
   white-space: normal;
 }
 
+/* 移动端：缩小最大高度 */
 @media (max-width: 768px) {
   .history-table-wrap {
     max-height: 320px;

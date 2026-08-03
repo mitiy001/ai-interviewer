@@ -166,6 +166,7 @@ export interface ImprovementDetail {
 
 export interface Report {
   interviewId: number
+  position?: string
   status: string
   totalScore: number | null
   maxTurns: number

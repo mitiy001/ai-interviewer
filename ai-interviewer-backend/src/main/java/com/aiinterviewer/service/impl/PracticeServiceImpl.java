@@ -60,10 +60,16 @@ public class PracticeServiceImpl implements PracticeService {
             throw new BusinessException(ResultCode.BUSINESS_ERROR, "该面试无答题记录，无法生成练习题");
         }
 
-        // 3. 筛选薄弱题（得分 < 60% 满分，或未作答）
+        // 3. 筛选薄弱题（得分 < 60% 满分，或未作答），最多取 3 道
         int threshold = (int) Math.ceil(FULL_SCORE_PER_TURN * WEAK_THRESHOLD_RATIO);
         List<AnswerRecord> weak = answers.stream()
                 .filter(a -> a.getScore() == null || a.getScore() < threshold)
+                .sorted((a, b) -> {
+                    int sa = a.getScore() == null ? -1 : a.getScore();
+                    int sb = b.getScore() == null ? -1 : b.getScore();
+                    return Integer.compare(sa, sb);
+                })
+                .limit(3)
                 .collect(Collectors.toList());
         if (weak.isEmpty()) {
             // 若都答得不错，取得分最低的 2 题

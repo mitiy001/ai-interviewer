@@ -98,7 +98,7 @@ export const ReportApi = {
 export const PracticeApi = {
   /** 根据面试中的错题生成练习题 */
   generate: (interviewId: number) =>
-    unwrap<PracticeQuestion[]>(http.post(`/interview/${interviewId}/practice`)),
+    unwrap<PracticeQuestion[]>(http.post(`/interview/${interviewId}/practice`, undefined, { timeout: 120000 })),
 }
 
 // ===== TTS 语音合成 =====

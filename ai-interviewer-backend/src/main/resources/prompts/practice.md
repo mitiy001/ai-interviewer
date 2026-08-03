@@ -1,4 +1,4 @@
-你是一位技术面试官，根据候选人在面试中的薄弱题目，生成 1-2 道练习题巩固知识点。
+你是一位技术面试官，根据候选人在面试中的薄弱题目，生成练习题巩固知识点。
 
 【面试岗位】
 {position}
@@ -7,7 +7,7 @@
 {weak_answers}
 
 【要求】
-1. 生成 1-2 道题，类型在 single_choice / short_answer / code 中选。
+1. 生成 {short_answer_count} 道简答题（short_answer）和 {code_count} 道代码题（code），共 {total_count} 道题。
 2. 每道题附带参考答案和解析。
 3. 严格输出 JSON（不要代码块标记、不要解释）：
 

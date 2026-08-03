@@ -2,6 +2,7 @@ package com.aiinterviewer.controller;
 
 import com.aiinterviewer.common.Result;
 import com.aiinterviewer.dto.req.AnswerReq;
+import com.aiinterviewer.dto.req.PracticeReq;
 import com.aiinterviewer.dto.req.StartReq;
 import com.aiinterviewer.dto.resp.InterviewListItemResp;
 import com.aiinterviewer.dto.resp.PracticeQuestionResp;
@@ -67,8 +68,11 @@ public class InterviewController {
     }
 
     @PostMapping("/{id}/practice")
-    public Result<List<PracticeQuestionResp>> practice(@PathVariable Long id) {
-        return Result.ok(practiceService.generate(id));
+    public Result<List<PracticeQuestionResp>> practice(@PathVariable Long id,
+                                                        @RequestBody(required = false) PracticeReq req) {
+        int sa = (req == null || req.getShortAnswerCount() <= 0) ? 2 : req.getShortAnswerCount();
+        int cc = (req == null || req.getCodeCount() <= 0) ? 0 : req.getCodeCount();
+        return Result.ok(practiceService.generate(id, sa, cc));
     }
 
     @PostMapping("/{id}/abort")

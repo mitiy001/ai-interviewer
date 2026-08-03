@@ -11,10 +11,12 @@ public interface PracticeService {
 
     /**
      * 根据面试记录生成错题重练题目。
-     * 取该面试中得分低于 60% 满分的题目作为薄弱点，调用 LLM 生成单选/简答/代码题。
+     * 取该面试中得分低于 60% 满分的题目作为薄弱点，调用 LLM 生成练习题。
      *
-     * @param interviewId 面试记录 ID
+     * @param interviewId     面试记录 ID
+     * @param shortAnswerCount 简答题数量
+     * @param codeCount        代码题数量
      * @return 练习题列表
      */
-    List<PracticeQuestionResp> generate(Long interviewId);
+    List<PracticeQuestionResp> generate(Long interviewId, int shortAnswerCount, int codeCount);
 }

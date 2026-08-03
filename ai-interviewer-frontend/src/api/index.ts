@@ -78,10 +78,12 @@ export const InterviewApi = {
   list: () => unwrap<InterviewListItem[]>(http.get('/interview')),
   answer: (id: number, answer: string) =>
     http.post(`/interview/${id}/answer`, { answer }).then((r) => r.data),
-  /** SSE 流地址（EventSource 用），使用完整后端地址确保跨域连接正确 */
-  streamUrl: (id: number) => {
+  /** SSE 流地址（EventSource 用），使用完整后端地址 + token 参数确保跨域认证成功 */
+  streamUrl: (id) => {
     const base = import.meta.env.VITE_API_BASE_URL || ''
-    return `${base}/api/interview/${id}/stream`
+    const token = localStorage.getItem('auth_token') || ''
+    const qs = token ? `?token=${encodeURIComponent(token)}` : ''
+    return `${base}/api/interview/${id}/stream${qs}`
   },
   /** 中断面试（用户退出时调用，确保状态及时更新为 ABORTED） */
   abort: (id: number) => http.post(`/interview/${id}/abort`).then((r) => r.data),
@@ -97,8 +99,8 @@ export const ReportApi = {
 // ===== 错题重练 =====
 export const PracticeApi = {
   /** 根据面试中的错题生成练习题 */
-  generate: (interviewId: number) =>
-    unwrap<PracticeQuestion[]>(http.post(`/interview/${interviewId}/practice`, undefined, { timeout: 120000 })),
+  generate: (interviewId: number, shortAnswerCount: number = 2, codeCount: number = 0) =>
+    unwrap<PracticeQuestion[]>(http.post(`/interview/${interviewId}/practice`, { shortAnswerCount, codeCount }, { timeout: 120000 })),
 }
 
 // ===== TTS 语音合成 =====

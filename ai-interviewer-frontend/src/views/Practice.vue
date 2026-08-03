@@ -11,6 +11,8 @@ const interviewId = ref<number | null>(null)
 const questions = ref<PracticeQuestion[]>([])
 const loading = ref(false)
 const errorMsg = ref('')
+const shortAnswerCount = ref(2)
+const codeCount = ref(1)
 
 // 每题作答状态
 const userAnswers = ref<Record<number, string>>({})
@@ -32,13 +34,19 @@ function typeBadgeClass(t: string): string {
 
 async function generate() {
   if (interviewId.value === null) return
+  const sa = shortAnswerCount.value
+  const cc = codeCount.value
+  if (sa + cc <= 0) {
+    errorMsg.value = '请至少选择 1 道题目'
+    return
+  }
   loading.value = true
   errorMsg.value = ''
   questions.value = []
   userAnswers.value = {}
   revealed.value = {}
   try {
-    questions.value = await PracticeApi.generate(interviewId.value)
+    questions.value = await PracticeApi.generate(interviewId.value, sa, cc)
     if (questions.value.length === 0) {
       errorMsg.value = '未能生成练习题，请稍后重试'
     }
@@ -81,10 +89,32 @@ onMounted(() => {
         </span>
       </h2>
       <div class="row" style="gap: 8px;">
-        <button class="btn btn-secondary" :disabled="loading" @click="generate">
-          {{ loading ? '生成中…' : '重新生成' }}
-        </button>
         <button class="btn btn-secondary" @click="router.push('/report')">返回报告</button>
+      </div>
+    </div>
+
+    <!-- 题目类型与数量选择 -->
+    <div class="practice-config">
+      <div class="config-item">
+        <label class="config-label">简答题</label>
+        <div class="config-control">
+          <button class="btn btn-icon" :disabled="shortAnswerCount <= 0" @click="shortAnswerCount--">−</button>
+          <span class="config-num">{{ shortAnswerCount }}</span>
+          <button class="btn btn-icon" :disabled="shortAnswerCount >= 5" @click="shortAnswerCount++">+</button>
+        </div>
+      </div>
+      <div class="config-item">
+        <label class="config-label">代码题</label>
+        <div class="config-control">
+          <button class="btn btn-icon" :disabled="codeCount <= 0" @click="codeCount--">−</button>
+          <span class="config-num">{{ codeCount }}</span>
+          <button class="btn btn-icon" :disabled="codeCount >= 5" @click="codeCount++">+</button>
+        </div>
+      </div>
+      <div class="config-item config-action">
+        <button class="btn btn-primary" :disabled="loading" @click="generate">
+          {{ loading ? '生成中…' : shortAnswerCount + codeCount > 0 ? `生成 ${shortAnswerCount + codeCount} 道题` : '生成题目' }}
+        </button>
       </div>
     </div>
 
@@ -172,28 +202,208 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-else class="empty">请点击「重新生成」创建练习题</div>
+    <div v-else class="empty">请选择题目数量并点击「生成」创建练习题</div>
   </div>
 </template>
 
 <style scoped>
-.practice-page { padding: 20px; max-width: 900px; margin: 0 auto; }
-.questions { display: flex; flex-direction: column; gap: 16px; }
-.question-card { padding: 16px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); }
-.q-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-.q-title { font-size: 14px; font-weight: 500; line-height: 1.6; margin-bottom: 12px; white-space: pre-wrap; }
-.q-options { display: flex; flex-direction: column; gap: 8px; }
-.q-option { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; transition: all 0.15s; }
-.q-option:hover { background: var(--bg-secondary); }
-.opt-correct { background: var(--success-light); border-color: var(--success); }
-.opt-wrong { background: var(--danger-light); border-color: var(--danger); }
-.opt-letter { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; border-radius: 50%; background: var(--bg-primary); font-weight: 600; font-size: 11px; }
-.q-textarea textarea, .q-code textarea { font-family: inherit; }
-.code-input { font-family: 'Consolas', 'Monaco', monospace; font-size: 12px; }
-.answer-block { margin-top: 12px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm); border: 1px solid var(--border-color); }
-.qa-section { margin-bottom: 8px; }
-.qa-section:last-child { margin-bottom: 0; }
-.qa-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
-.qa-content { font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
-.code-block { font-family: 'Consolas', 'Monaco', monospace; font-size: 12px; background: var(--bg-primary); padding: 8px; border-radius: var(--radius-sm); }
-</style>
+.practice-page {
+  padding: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.practice-config {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.config-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.config-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.config-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.config-num {
+  display: inline-flex;
+  width: 32px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+}
+
+.config-action {
+  margin-left: auto;
+}
+
+.btn-icon {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-icon:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+
+.btn-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.questions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.question-card {
+  padding: 16px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.q-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.q-title {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.6;
+  margin-bottom: 12px;
+  white-space: pre-wrap;
+}
+
+.q-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.q-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.q-option:hover {
+  background: var(--bg-secondary);
+}
+
+.opt-correct {
+  background: var(--success-light);
+  border-color: var(--success);
+}
+
+.opt-wrong {
+  background: var(--danger-light);
+  border-color: var(--danger);
+}
+
+.opt-letter {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.q-textarea textarea,
+.q-code textarea {
+  font-family: inherit;
+}
+
+.code-input {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+}
+
+.answer-block {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.qa-section {
+  margin-bottom: 8px;
+}
+
+.qa-section:last-child {
+  margin-bottom: 0;
+}
+
+.qa-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.qa-content {
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.code-block {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  background: var(--bg-primary);
+  padding: 8px;
+  border-radius: var(--radius-sm);
+}
+</stylign-items: center;\n  gap: 8px;\n  padding: 8px 10px;\n  background: var(--bg-tertiary);\n  border: 1px solid var(--border-color);\n  border-radius: var(--radius-sm);\n  cursor: pointer;\n  font-size: 13px;\n  transition: all 0.15s;\n}\n\n.q-option:hover {\n  background: var(--bg-secondary);\n}\n\n.opt-correct {\n  background: var(--success-light);\n  border-color: var(--success);\n}\n\n.opt-wrong {\n  background: var(--danger-light);\n  border-color: var(--danger);\n}\n\n.opt-letter {\n  display: inline-flex;\n  width: 20px;\n  height: 20px;\n  align-items: center;\n  justify-content: center;\n  border-radius: 50%;\n  background: var(--bg-primary);\n  font-weight: 600;\n  font-size: 11px;\n}\n\n.q-textarea textarea,\n.q-code textarea {\n  font-family: inherit;\n}\n\n.code-input {\n  font-family: 'Consolas', 'Monaco', monospace;\n  font-size: 12px;\n}\n\n.answer-block {\n  margin-top: 12px;\n  padding: 12px;\n  background: var(--bg-tertiary);\n  border-radius: var(--radius-sm);\n  border: 1px solid var(--border-color);\n}\n\n.qa-section {\n  margin-bottom: 8px;\n}\n\n.qa-section:last-child {\n  margin-bottom: 0;\n}\n\n.qa-label {\n  font-size: 11px;\n  color: var(--text-secondary);\n  margin-bottom: 4px;\n}\n\n.qa-content {\n  font-size: 13px;\n  line-height: 1.6;\n  white-space: pre-wrap;\n  word-break: break-word;\n}\n\n.code-block {\n  font-family: 'Consolas', 'Monaco', monospace;\n  font-size: 12px;\n  background: var(--bg-primary);\n  padding: 8px;\n  border-radius: var(--radius-sm);\n}\n</style>\n"}]

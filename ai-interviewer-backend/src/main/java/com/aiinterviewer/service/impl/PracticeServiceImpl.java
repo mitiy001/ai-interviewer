@@ -44,7 +44,7 @@ public class PracticeServiceImpl implements PracticeService {
     private final ObjectMapper objectMapper;
 
     @Override
-    public List<PracticeQuestionResp> generate(Long interviewId) {
+    public List<PracticeQuestionResp> generate(Long interviewId, int shortAnswerCount, int codeCount) {
         // 1. 校验面试记录归属
         InterviewRecord record = interviewRecordMapper.selectById(interviewId);
         if (record == null || !UserContext.getUserId().equals(record.getUserId())) {
@@ -94,12 +94,21 @@ public class PracticeServiceImpl implements PracticeService {
 
         // 5. 调用 LLM 生成练习题
         String position = record.getBankId() == null ? "Java" : "Java";
+        int totalCount = shortAnswerCount + codeCount;
+        if (totalCount <= 0) {
+            shortAnswerCount = 2;
+            totalCount = 2;
+        }
         String prompt = promptLoader.render("practice", Map.of(
                 "position", position,
-                "weak_answers", weakDesc.toString()
+                "weak_answers", weakDesc.toString(),
+                "short_answer_count", String.valueOf(shortAnswerCount),
+                "code_count", String.valueOf(codeCount),
+                "total_count", String.valueOf(totalCount)
         ));
 
-        log.info("生成错题重练 interviewId={} weakCount={}", interviewId, weak.size());
+        log.info("生成错题重练 interviewId={} weakCount={} shortAnswerCount={} codeCount={}",
+                interviewId, weak.size(), shortAnswerCount, codeCount);
         ChatClient client = nodeSupport.getChatClientByConfigId(record.getModelConfigId());
         String llmResult;
         try {

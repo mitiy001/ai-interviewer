@@ -14,6 +14,8 @@ import java.util.List;
 public class ReportResp {
 
     private Long interviewId;
+    /** 面试岗位（来自 Skill） */
+    private String position;
     /** 面试状态 */
     private String status;
     /** 总分 */

@@ -79,7 +79,7 @@ export const InterviewApi = {
   answer: (id: number, answer: string) =>
     http.post(`/interview/${id}/answer`, { answer }).then((r) => r.data),
   /** SSE 流地址（EventSource 用），使用完整后端地址 + token 参数确保跨域认证成功 */
-  streamUrl: (id) => {
+  streamUrl: (id: number) => {
     const base = import.meta.env.VITE_API_BASE_URL || ''
     const token = localStorage.getItem('auth_token') || ''
     const qs = token ? `?token=${encodeURIComponent(token)}` : ''

@@ -11,8 +11,6 @@ import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
-
 /**
  * ChatClient 工厂：根据 model_config 动态构造 OpenAI 兼容的 ChatModel / ChatClient。
  * <p>
@@ -35,7 +33,6 @@ public class ChatClientFactory {
             OpenAiApi api = OpenAiApi.builder()
                     .baseUrl(config.getEndpoint())
                     .apiKey(config.getApiKey())
-                    .connectTimeout(Duration.ofSeconds(60))
                     .build();
             OpenAiChatOptions options = OpenAiChatOptions.builder()
                     .model(config.getModel())
@@ -73,7 +70,6 @@ public class ChatClientFactory {
             OpenAiApi api = OpenAiApi.builder()
                     .baseUrl(config.getJudgeEndpoint())
                     .apiKey(config.getApiKey())
-                    .connectTimeout(Duration.ofSeconds(60))
                     .build();
             OpenAiChatOptions options = OpenAiChatOptions.builder()
                     .model(config.getJudgeModel())

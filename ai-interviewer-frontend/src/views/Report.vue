@@ -111,6 +111,7 @@ onMounted(async () => {
   <div class="report-layout">
     <p v-if="errorMsg" class="error-text">{{ errorMsg }}</p>
 
+    <!-- 左侧：历史列表 -->
     <div class="card report-list">
       <h3 class="section-title" style="margin: 0 0 12px;">面试记录</h3>
       <div v-if="list.length === 0" class="empty">暂无记录</div>
@@ -137,14 +138,16 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- 右侧：报告详情 -->
     <div class="card report-detail">
       <div v-if="!hasId" class="empty">请从左侧选择一场面试查看报告</div>
       <div v-else-if="loading" class="empty">加载中…</div>
       <div v-else-if="!report" class="empty">暂无报告数据</div>
       <template v-else>
+        <!-- 报告头 -->
         <div class="report-head">
           <div class="report-head-left">
-            <h2 class="report-title">面试 #{{ report.interviewId }} 报告</h2>
+            <h2 class="report-title">{{ report.position || `面试 #${report.interviewId}` }} 报告</h2>
             <span :class="statusBadgeClass(report.status)" class="status-pill">{{ report.status }}</span>
           </div>
           <div class="row" style="gap: 8px;">
@@ -179,6 +182,7 @@ onMounted(async () => {
           </div>
         </div>
 
+        <!-- 薪资范围 -->
         <div v-if="report.salaryRange" class="report-block salary-card">
           <div class="salary-glow"></div>
           <div class="salary-card-inner">
@@ -201,6 +205,7 @@ onMounted(async () => {
           </div>
         </div>
 
+        <!-- 薪资报价（模拟真实公司 offer） -->
         <div v-if="report.salaryOffer" class="report-block offer-card">
           <div class="offer-glow"></div>
           <div class="offer-card-inner">
@@ -248,6 +253,7 @@ onMounted(async () => {
           </div>
         </div>
 
+        <!-- 总评 -->
         <div v-if="report.overallComment" class="report-block">
           <h4 class="block-title">总评</h4>
           <p class="block-text">{{ report.overallComment }}</p>
@@ -257,6 +263,7 @@ onMounted(async () => {
           <p class="block-text">{{ report.summary }}</p>
         </div>
 
+        <!-- 优势/不足 -->
         <div v-if="report.strengths && report.strengths.length" class="report-block">
           <h4 class="block-title">优势</h4>
           <ul class="block-list">
@@ -270,6 +277,7 @@ onMounted(async () => {
           </ul>
         </div>
 
+        <!-- 改进建议（新结构化格式） -->
         <div v-if="report.improvementDetails && report.improvementDetails.length" class="report-block">
           <h4 class="block-title">改进建议</h4>
           <div class="improvements">
@@ -297,6 +305,7 @@ onMounted(async () => {
             </div>
           </div>
         </div>
+        <!-- 改进建议（旧纯文本格式，兼容已存报告） -->
         <div v-else-if="report.improvements && report.improvements.length" class="report-block">
           <h4 class="block-title">改进建议</h4>
           <ul class="block-list">
@@ -304,6 +313,7 @@ onMounted(async () => {
           </ul>
         </div>
 
+        <!-- 答题明细 -->
         <div class="report-block">
           <h4 class="block-title">答题明细</h4>
           <div v-if="report.answers.length === 0" class="empty">暂无答题记录</div>
@@ -346,6 +356,7 @@ onMounted(async () => {
   gap: 16px;
 }
 
+/* ===== 左侧列表 ===== */
 .report-list {
   padding: 16px;
   height: calc(100vh - 140px);
@@ -380,6 +391,7 @@ onMounted(async () => {
   box-shadow: var(--shadow-glow);
 }
 
+/* ===== 右侧详情 ===== */
 .report-detail {
   padding: 22px;
   height: calc(100vh - 140px);
@@ -412,6 +424,7 @@ onMounted(async () => {
   font-size: 11px;
 }
 
+/* ===== 统计卡 ===== */
 .stat-row {
   display: flex;
   gap: 14px;
@@ -491,6 +504,7 @@ onMounted(async () => {
   font-weight: 600;
 }
 
+/* ===== 通用 block ===== */
 .report-block {
   margin-top: 20px;
 }
@@ -522,6 +536,7 @@ onMounted(async () => {
   margin-bottom: 4px;
 }
 
+/* ===== 答题明细 ===== */
 .answers {
   display: flex;
   flex-direction: column;
@@ -566,6 +581,7 @@ onMounted(async () => {
   word-break: break-word;
 }
 
+/* ===== 薪资范围卡（高级渐变光晕）===== */
 .salary-card {
   position: relative;
   border-radius: var(--radius-lg);
@@ -669,6 +685,7 @@ onMounted(async () => {
   -webkit-text-fill-color: transparent;
 }
 
+/* ===== 薪资报价卡（模拟真实 offer）===== */
 .offer-card {
   position: relative;
   border-radius: var(--radius-lg);
@@ -809,6 +826,7 @@ onMounted(async () => {
   font-style: italic;
 }
 
+/* ===== 改进建议 ===== */
 .improvements {
   display: flex;
   flex-direction: column;
@@ -882,6 +900,7 @@ onMounted(async () => {
   color: var(--danger);
 }
 
+/* ===== 移动端响应式 ===== */
 @media (max-width: 768px) {
   .report-layout {
     grid-template-columns: 1fr;

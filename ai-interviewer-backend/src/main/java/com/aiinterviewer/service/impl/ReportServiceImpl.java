@@ -10,10 +10,12 @@ import com.aiinterviewer.dto.resp.SalaryRangeResp;
 import com.aiinterviewer.entity.AnswerRecord;
 import com.aiinterviewer.entity.InterviewRecord;
 import com.aiinterviewer.entity.InterviewReport;
+import com.aiinterviewer.entity.Skill;
 import com.aiinterviewer.exception.BusinessException;
 import com.aiinterviewer.mapper.AnswerRecordMapper;
 import com.aiinterviewer.mapper.InterviewRecordMapper;
 import com.aiinterviewer.mapper.InterviewReportMapper;
+import com.aiinterviewer.mapper.SkillMapper;
 import com.aiinterviewer.service.ReportService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -38,6 +40,7 @@ public class ReportServiceImpl implements ReportService {
     private final InterviewReportMapper interviewReportMapper;
     private final InterviewRecordMapper interviewRecordMapper;
     private final AnswerRecordMapper answerRecordMapper;
+    private final SkillMapper skillMapper;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -98,6 +101,13 @@ public class ReportServiceImpl implements ReportService {
         if (report != null) {
             resp.setSummary(report.getSummary());
             resp.setGeneratedAt(report.getGeneratedAt());
+            // 从 skill 加载岗位名称
+            if (record.getSkillId() != null) {
+                Skill skill = skillMapper.selectById(record.getSkillId());
+                if (skill != null && skill.getPosition() != null) {
+                    resp.setPosition(skill.getPosition());
+                }
+            }
             // improvement_points 是 JSON 数组字符串
             resp.setImprovements(parseStringList(report.getImprovementPoints()));
             // 尝试从 summary 解析结构化字段（summary 可能存的是 overall_comment 文本，也可能是原始 JSON）

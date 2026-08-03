@@ -35,7 +35,7 @@ public class ChatClientFactory {
             OpenAiApi api = OpenAiApi.builder()
                     .baseUrl(config.getEndpoint())
                     .apiKey(config.getApiKey())
-                    .readTimeout(Duration.ofSeconds(60))
+                    .connectTimeout(Duration.ofSeconds(60))
                     .build();
             OpenAiChatOptions options = OpenAiChatOptions.builder()
                     .model(config.getModel())
@@ -73,7 +73,7 @@ public class ChatClientFactory {
             OpenAiApi api = OpenAiApi.builder()
                     .baseUrl(config.getJudgeEndpoint())
                     .apiKey(config.getApiKey())
-                    .readTimeout(Duration.ofSeconds(60))
+                    .connectTimeout(Duration.ofSeconds(60))
                     .build();
             OpenAiChatOptions options = OpenAiChatOptions.builder()
                     .model(config.getJudgeModel())

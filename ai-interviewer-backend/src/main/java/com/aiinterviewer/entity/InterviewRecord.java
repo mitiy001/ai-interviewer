@@ -21,6 +21,8 @@ public class InterviewRecord {
     private String status;
     private Integer maxTurns;
     private Integer totalScore;
+    /** 面试状态上下文 JSON（用于断线重连恢复） */
+    private String context;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
 }

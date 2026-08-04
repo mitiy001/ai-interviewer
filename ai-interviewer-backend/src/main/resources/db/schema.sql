@@ -22,12 +22,11 @@ CREATE TABLE IF NOT EXISTS `user` (
   UNIQUE KEY uk_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户';
 
--- ⚠ 已有库升级语句（老库必须执行）
+-- ALTER TABLE user ADD COLUMN role VARCHAR(16) NOT NULL DEFAULT 'user' COMMENT 'admin/user' AFTER status;
 # ALTER TABLE user ADD COLUMN password_hash VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'BCrypt 哈希密码' AFTER username;
 # ALTER TABLE user ADD COLUMN email VARCHAR(128) DEFAULT NULL COMMENT '邮箱' AFTER password_hash;
 # ALTER TABLE user ADD COLUMN status TINYINT NOT NULL DEFAULT 1 COMMENT '1正常/0禁用' AFTER email;
 # ALTER TABLE user ADD COLUMN last_login_at DATETIME DEFAULT NULL COMMENT '最后登录时间' AFTER status;
--- 更新 default 用户密码为 123456（BCrypt）
 # UPDATE user SET password_hash = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy' WHERE id = 1;
 
 -- 2. 模型 API 配置
@@ -41,10 +40,10 @@ CREATE TABLE IF NOT EXISTS model_config (
   endpoint        VARCHAR(256) NOT NULL,
   judge_model     VARCHAR(64) DEFAULT NULL COMMENT '预留独立 Judge 模型名',
   judge_endpoint  VARCHAR(256) DEFAULT NULL COMMENT '预留独立 Judge 端点',
-  tts_endpoint    VARCHAR(256) DEFAULT NULL COMMENT 'TTS 服务端点（Qwen3-TTS DashScope: https://dashscope.aliyuncs.com/api/v1，留空使用默认）',
-  tts_api_key     VARCHAR(256) DEFAULT NULL COMMENT 'TTS 服务 API Key（为空则复用 api_key）',
-  tts_model       VARCHAR(64) DEFAULT NULL COMMENT 'TTS 模型名（如 cosyvoice-v1 免费 / cosyvoice-v2 / cosyvoice-v3-plus）',
-  tts_voice       VARCHAR(64) DEFAULT NULL COMMENT 'TTS 音色（v1: longhua/longxiaoxia/longshu；v3: Vivian/Serena）',
+  tts_endpoint    VARCHAR(256) DEFAULT NULL COMMENT 'TTS 服务端点',
+  tts_api_key     VARCHAR(256) DEFAULT NULL COMMENT 'TTS 服务 API Key',
+  tts_model       VARCHAR(64) DEFAULT NULL COMMENT 'TTS 模型名',
+  tts_voice       VARCHAR(64) DEFAULT NULL COMMENT 'TTS 音色',
   is_active       TINYINT NOT NULL DEFAULT 0,
   created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -52,14 +51,7 @@ CREATE TABLE IF NOT EXISTS model_config (
   KEY idx_user_active (user_id, is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='模型 API 配置';
 
--- ⚠ 已有库升级语句（首次建库可忽略，老库必须执行）
--- 若 model_config 表是早期创建的（无 tts_* 列），取消下面 4 行注释执行一次以补列：
--- ALTER TABLE model_config ADD COLUMN tts_endpoint VARCHAR(256) DEFAULT NULL COMMENT 'TTS 服务端点' AFTER judge_endpoint;
--- ALTER TABLE model_config ADD COLUMN tts_api_key VARCHAR(256) DEFAULT NULL COMMENT 'TTS 服务 API Key（为空则复用 api_key）' AFTER tts_endpoint;
--- ALTER TABLE model_config ADD COLUMN tts_model VARCHAR(64) DEFAULT NULL COMMENT 'TTS 模型名' AFTER tts_api_key;
--- ALTER TABLE model_config ADD COLUMN tts_voice VARCHAR(64) DEFAULT NULL COMMENT 'TTS 音色' AFTER tts_model;
-
--- 3. Skill 判定标准（结构化 prompt + 评分维度）
+-- 3. Skill 判定标准
 CREATE TABLE IF NOT EXISTS skill (
   id                  BIGINT NOT NULL AUTO_INCREMENT,
   user_id             BIGINT NOT NULL DEFAULT 0 COMMENT '所属用户，0=系统模板',
@@ -76,14 +68,6 @@ CREATE TABLE IF NOT EXISTS skill (
   KEY idx_position_active (position, is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='判定标准 Skill';
 
--- ⚠ 已有库升级语句（首次建库可忽略，老库必须执行）
--- 若 skill 表是早期创建的（无 level 列），取消下面一行注释执行一次以补列：
-# ALTER TABLE skill ADD COLUMN level VARCHAR(16) NOT NULL DEFAULT 'mid' COMMENT '工程师等级 junior/mid/senior' AFTER position;
--- 若 skill 表无 user_id 列，执行：
-# ALTER TABLE skill ADD COLUMN user_id BIGINT NOT NULL DEFAULT 0 COMMENT '所属用户，0=系统模板' AFTER id;
-# ALTER TABLE skill ADD INDEX idx_user (user_id);
--- 已有 skill 设为模板
-# UPDATE skill SET user_id = 0 WHERE id IN (1,2,3);
 -- 4. 简历
 CREATE TABLE IF NOT EXISTS resume (
   id           BIGINT NOT NULL AUTO_INCREMENT,
@@ -140,9 +124,9 @@ CREATE TABLE IF NOT EXISTS interview_record (
   KEY idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='面试主记录';
 
--- ⚠ 已有库升级语句（首次建库可忽略，老库必须执行）
--- 若 interview_record 表是早期创建的，取消下面一行注释执行一次以补列：
+-- 已有库升级语句
 -- ALTER TABLE interview_record ADD COLUMN max_turns INT NOT NULL DEFAULT 5 COMMENT '本轮面试轮次上限' AFTER status;
+-- ALTER TABLE interview_record ADD COLUMN context LONGTEXT DEFAULT NULL COMMENT '面试状态上下文JSON（用于断线重连恢复）' AFTER total_score;
 
 -- 8. 每题回答与判定
 CREATE TABLE IF NOT EXISTS answer_record (

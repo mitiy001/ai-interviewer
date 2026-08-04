@@ -5,6 +5,7 @@ import com.aiinterviewer.dto.req.AnswerReq;
 import com.aiinterviewer.dto.req.PracticeReq;
 import com.aiinterviewer.dto.req.StartReq;
 import com.aiinterviewer.dto.resp.InterviewListItemResp;
+import com.aiinterviewer.dto.resp.InterviewResumeResp;
 import com.aiinterviewer.dto.resp.PracticeQuestionResp;
 import com.aiinterviewer.dto.resp.ReportResp;
 import com.aiinterviewer.dto.resp.StartResp;
@@ -19,19 +20,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
-/**
- * 面试 REST 接口
- * <p>
- * <ul>
- *   <li>POST /api/interview/start              启动面试（校验前置条件 + 建记录）</li>
- *   <li>GET  /api/interview                    面试历史列表</li>
- *   <li>GET  /api/interview/{id}/stream        连接 SSE 流（驱动面试主循环）</li>
- *   <li>POST /api/interview/{id}/answer        提交本轮回答</li>
- *   <li>GET  /api/interview/{id}/report        查询面试报告</li>
- *   <li>POST /api/interview/{id}/practice      生成错题重练题目</li>
- *   <li>DELETE /api/interview/{id}             删除面试记录及关联数据</li>
- * </ul>
- */
 @RestController
 @RequestMapping("/api/interview")
 @RequiredArgsConstructor
@@ -73,6 +61,11 @@ public class InterviewController {
         int sa = (req == null || req.getShortAnswerCount() <= 0) ? 2 : req.getShortAnswerCount();
         int cc = (req == null || req.getCodeCount() <= 0) ? 0 : req.getCodeCount();
         return Result.ok(practiceService.generate(id, sa, cc));
+    }
+
+    @GetMapping("/{id}/resume")
+    public Result<InterviewResumeResp> resume(@PathVariable Long id) {
+        return Result.ok(interviewService.resume(id));
     }
 
     @PostMapping("/{id}/abort")

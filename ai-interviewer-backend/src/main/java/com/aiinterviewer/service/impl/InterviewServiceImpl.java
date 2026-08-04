@@ -2,8 +2,10 @@ package com.aiinterviewer.service.impl;
 
 import com.aiinterviewer.common.ResultCode;
 import com.aiinterviewer.common.UserContext;
+import com.aiinterviewer.common.RateLimiter;
 import com.aiinterviewer.dto.req.StartReq;
 import com.aiinterviewer.dto.resp.InterviewListItemResp;
+import com.aiinterviewer.dto.resp.InterviewResumeResp;
 import com.aiinterviewer.dto.resp.StartResp;
 import com.aiinterviewer.entity.AnswerRecord;
 import com.aiinterviewer.entity.InterviewRecord;
@@ -24,6 +26,7 @@ import com.aiinterviewer.service.InterviewService;
 import com.aiinterviewer.service.ModelConfigService;
 import com.aiinterviewer.service.SkillService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,11 +35,10 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-/**
- * 面试 Service 实现
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -54,20 +56,26 @@ public class InterviewServiceImpl implements InterviewService {
     private final SkillService skillService;
     private final InterviewExecutor interviewExecutor;
 
+    /** 回答提交速率限制：每 10 秒最多 5 次 */
+    private final RateLimiter answerRateLimiter = new RateLimiter(5, 10_000);
+
+    @PostConstruct
+    public void init() {
+        Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "rate-limiter-cleanup");
+            t.setDaemon(true);
+            return t;
+        }).scheduleAtFixedRate(answerRateLimiter::cleanUp, 5, 5, TimeUnit.MINUTES);
+    }
+
     @Override
     public StartResp start(StartReq req) {
         Long userId = UserContext.getUserId();
-
-        // 1. 校验简历
         Resume resume = resolveResume(userId, req);
-        // 2. 校验题库
         QuestionBank bank = resolveBank(userId, req);
-        // 3. 校验模型配置
         ModelConfig modelConfig = resolveModelConfig(req);
-        // 4. 校验 Skill
         Skill skill = resolveSkill(req);
 
-        // 5. 计算轮次上限
         Long questionCount = questionMapper.selectCount(
                 new LambdaQueryWrapper<com.aiinterviewer.entity.Question>()
                         .eq(com.aiinterviewer.entity.Question::getBankId, bank.getId()));
@@ -79,12 +87,10 @@ public class InterviewServiceImpl implements InterviewService {
                 ? req.getMaxTurns() : DEFAULT_MAX_TURNS;
         maxTurns = Math.min(maxTurns, qCount);
 
-        // 6. 创建面试记录
         InterviewRecord record = new InterviewRecord();
         record.setUserId(userId);
         record.setModelConfigId(modelConfig.getId());
         record.setSkillId(skill.getId());
-        // 简历可选：未上传时 resumeId 留空，仅依据题库面试
         if (resume != null) {
             record.setResumeId(resume.getId());
         }
@@ -109,7 +115,6 @@ public class InterviewServiceImpl implements InterviewService {
             }
             return r;
         }
-        // 简历可选：未指定时取最新一份，没有则返回 null（仅依据题库面试）
         Resume latest = resumeMapper.selectOne(new LambdaQueryWrapper<Resume>()
                 .eq(Resume::getUserId, userId)
                 .orderByDesc(Resume::getUploadedAt)
@@ -136,7 +141,6 @@ public class InterviewServiceImpl implements InterviewService {
     }
 
     private ModelConfig resolveModelConfig(StartReq req) {
-        // 当前仅支持使用已激活的模型配置
         ModelConfig active = modelConfigService.getActiveRaw();
         if (active == null) {
             throw new BusinessException(ResultCode.BUSINESS_ERROR, "请先在设置页激活一个模型配置");
@@ -145,7 +149,6 @@ public class InterviewServiceImpl implements InterviewService {
     }
 
     private Skill resolveSkill(StartReq req) {
-        // 指定 skillId 时使用指定 skill（支持用户选择不同等级），否则取激活的
         if (req != null && req.getSkillId() != null) {
             return skillService.getByIdRaw(req.getSkillId());
         }
@@ -163,6 +166,10 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Override
     public void answer(Long interviewId, String answer) {
+        Long userId = UserContext.getUserId();
+        if (!answerRateLimiter.tryAcquire(userId)) {
+            throw new BusinessException(ResultCode.TOO_MANY_REQUESTS, "提交回答过于频繁，请稍后再试");
+        }
         interviewExecutor.submitAnswer(interviewId, answer);
     }
 
@@ -188,6 +195,15 @@ public class InterviewServiceImpl implements InterviewService {
     }
 
     @Override
+    public InterviewResumeResp resume(Long interviewId) {
+        InterviewRecord record = interviewRecordMapper.selectById(interviewId);
+        if (record == null || !UserContext.getUserId().equals(record.getUserId())) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "面试记录不存在");
+        }
+        return interviewExecutor.buildResumeResp(interviewId);
+    }
+
+    @Override
     public void abort(Long interviewId) {
         InterviewRecord record = interviewRecordMapper.selectById(interviewId);
         if (record == null || !UserContext.getUserId().equals(record.getUserId())) {
@@ -203,18 +219,13 @@ public class InterviewServiceImpl implements InterviewService {
         if (record == null || !UserContext.getUserId().equals(record.getUserId())) {
             throw new BusinessException(ResultCode.NOT_FOUND, "面试记录不存在");
         }
-        // RUNNING 状态处理：
-        //   - 会话仍活跃（用户真在面试中）→ 拒绝删除，提示先结束面试
-        //   - 会话已断开（中断后状态残留）→ 自动标记 ABORTED 后允许删除
         if ("RUNNING".equals(record.getStatus())) {
             if (interviewExecutor.isSessionActive(interviewId)) {
                 throw new BusinessException(ResultCode.BUSINESS_ERROR, "面试进行中，请先退出面试后再删除");
             }
-            // 会话已断开但状态未更新，自动中断兜底
             log.info("RUNNING 状态但会话不活跃，自动标记 ABORTED 后删除 interviewId={}", interviewId);
             interviewExecutor.abort(interviewId);
         }
-        // 删除关联数据：答题记录、报告
         answerRecordMapper.delete(new LambdaQueryWrapper<AnswerRecord>()
                 .eq(AnswerRecord::getInterviewId, interviewId));
         interviewReportMapper.delete(new LambdaQueryWrapper<InterviewReport>()

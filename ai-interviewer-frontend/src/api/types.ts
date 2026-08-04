@@ -5,7 +5,6 @@ export interface Result<T> {
   data: T
 }
 
-// ===== 模型配置 =====
 export interface ModelConfig {
   id: number
   name: string
@@ -15,13 +14,9 @@ export interface ModelConfig {
   endpoint: string
   judgeModel?: string
   judgeEndpoint?: string
-  /** TTS 服务端点（Qwen3-TTS DashScope） */
   ttsEndpoint?: string
-  /** TTS 模型名 */
   ttsModel?: string
-  /** TTS 音色 */
   ttsVoice?: string
-  /** 脱敏后的 tts_api_key */
   ttsApiKeyMasked?: string
   isActive: number
   createdAt: string
@@ -29,7 +24,6 @@ export interface ModelConfig {
 }
 
 export interface ModelConfigReq {
-  /** 编辑场景下传入，用于连通测试时回查数据库已保存的 apiKey；新建时留空 */
   id?: number
   name: string
   provider: string
@@ -38,18 +32,13 @@ export interface ModelConfigReq {
   endpoint: string
   judgeModel?: string
   judgeEndpoint?: string
-  /** TTS 服务端点 */
   ttsEndpoint?: string
-  /** TTS 服务 API Key（为空则复用 api_key） */
   ttsApiKey?: string
-  /** TTS 模型名 */
   ttsModel?: string
-  /** TTS 音色 */
   ttsVoice?: string
   isActive?: number
 }
 
-// ===== 模型连通测试 =====
 export interface ModelTestResult {
   success: boolean
   message: string
@@ -57,19 +46,16 @@ export interface ModelTestResult {
   latencyMs: number
 }
 
-// ===== Skill =====
 export interface Skill {
   id: number
   name: string
   position: string
-  /** 工程师等级：junior/mid/senior */
   level: string
   promptTemplate: string
   scoringDimensions: { name: string; max: number }[]
   isActive: number
 }
 
-// ===== 简历 / 题库 =====
 export interface UploadResult {
   id: number
   questionCount?: number | null
@@ -82,7 +68,6 @@ export interface Resume {
   filename: string
   parsedPreview: string
   parsedLength: number
-  /** 解析后纯文本全文（仅详情接口返回） */
   parsedText?: string
   uploadedAt: string
 }
@@ -97,7 +82,6 @@ export interface QuestionBank {
   createdAt: string
 }
 
-// ===== 面试 =====
 export interface StartReq {
   resumeId?: number
   bankId?: number
@@ -120,7 +104,6 @@ export interface InterviewListItem {
   endTime: string | null
 }
 
-// ===== 报告 =====
 export interface AnswerItem {
   id: number
   turnIndex: number
@@ -132,7 +115,6 @@ export interface AnswerItem {
   answeredAt: string
 }
 
-/** 薪资范围 */
 export interface SalaryRange {
   level: string
   monthlyMin: number
@@ -143,7 +125,6 @@ export interface SalaryRange {
   note: string
 }
 
-/** 薪资报价（模拟真实公司 offer） */
 export interface SalaryOffer {
   companyType: string
   offerLevel: string
@@ -157,7 +138,6 @@ export interface SalaryOffer {
   rationale: string
 }
 
-/** 结构化改进建议 */
 export interface ImprovementDetail {
   problem: string
   learningPath: string
@@ -182,7 +162,25 @@ export interface Report {
   answers: AnswerItem[]
 }
 
-/** 错题重练题目 */
+export interface ResumeMessageItem {
+  role: string
+  content: string
+  turn?: number
+  score?: number
+  judgeReason?: string
+}
+
+export interface InterviewResumeResp {
+  interviewId: number
+  status: string
+  phase: string
+  turnIndex: number
+  maxTurns: number
+  waitingAnswer: boolean
+  currentQuestion?: string
+  messages: ResumeMessageItem[]
+}
+
 export interface PracticeQuestion {
   type: 'single_choice' | 'short_answer' | 'code'
   question: string

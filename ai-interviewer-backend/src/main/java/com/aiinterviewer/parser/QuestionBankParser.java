@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
  * }
  *     }</pre>
  *   </li>
- *   <li>MD（轻量，每题以 {@code ## Q1} / {@code ## } 开头分隔）：
+ *   <li>MD（轻量，支持两种分隔格式，自动检测）：
  *     <pre>
  * # 题库名（首行 # 开头可选，作为题库名）
  *
@@ -51,6 +51,18 @@ import java.util.regex.Pattern;
  * ## Q2
  * ...
  *     </pre>
+ *     或章节 + 子题格式：
+ *     <pre>
+ * ## 章节标题
+ *
+ * ### 1. 题目一
+ * 题目内容
+ *
+ * ### 2. 题目二
+ * 题目内容
+ *     </pre>
+ *     两种模式自动识别：只要文档存在 {@code ### 题目} 行，则 {@code ###} 是题目分隔符、
+ *     {@code ##} 是章节标题（跳过）；否则 {@code ##} 是题目分隔符。
  *     其中 {@code [type=.., difficulty=..]} 元数据行可选，{@code ### 标准答案}/{@code ### 评分点} 段可选。
  *   </li>
  * </ol>
@@ -137,11 +149,34 @@ public class QuestionBankParser {
             name = lines[0].trim().substring(2).trim();
         }
 
-        // 按 "## " 切块；遇到第一个 "## " 之前的行（题库名/说明）全部忽略
+        // 检测题目分隔级别：若文档存在 "### 题目"（排除 标准答案/评分点 子段落），
+        // 则 ### 是题目分隔符、## 是章节标题（跳过）；否则 ## 是题目分隔符
+        boolean hasThirdLevel = false;
+        for (String line : lines) {
+            String t = line.trim();
+            if (t.startsWith("### ") && !isSubSectionTitle(t)) {
+                hasThirdLevel = true;
+                break;
+            }
+        }
+
+        // 按题目分隔符切块；遇到第一个分隔符之前的行（题库名/说明）全部忽略
         List<String> blocks = new ArrayList<>();
         StringBuilder cur = null;
         for (String line : lines) {
-            if (line.trim().startsWith("## ")) {
+            String t = line.trim();
+            if (hasThirdLevel && t.startsWith("## ") && !t.startsWith("### ")) {
+                // ### 题目模式下，## 章节标题：结束当前块，自身不入块
+                if (cur != null) {
+                    blocks.add(cur.toString());
+                    cur = null;
+                }
+                continue;
+            }
+            // 两种模式下，### 标准答案/评分点 子段落都不能作为题目分隔符
+            boolean isHeader = t.startsWith(hasThirdLevel ? "### " : "## ")
+                    && !isSubSectionTitle(t);
+            if (isHeader) {
                 if (cur != null) {
                     blocks.add(cur.toString());
                 }
@@ -162,9 +197,10 @@ public class QuestionBankParser {
                 questions.add(pq);
             }
         }
+        log.info("MD解析完成: 总行数={}, 切块数={}, 有效题目数={}", lines.length, blocks.size(), questions.size());
         if (questions.isEmpty()) {
             throw new BusinessException(ResultCode.PARAM_ERROR,
-                    "未解析到题目，请使用 '## ' 开头分隔每道题");
+                    "未解析到题目，请使用 '## ' 或 '### ' 开头分隔每道题");
         }
         return new ParsedBank(name, description, questions);
     }
@@ -182,7 +218,16 @@ public class QuestionBankParser {
         boolean headerSkipped = false;
         for (String raw : lines) {
             String line = raw.trim();
-            if (line.startsWith("## ")) {
+            // 子段落判断必须在标题跳过之前，否则 ### 标准答案 永远不会被识别
+            if (line.equalsIgnoreCase("### 标准答案") || line.equalsIgnoreCase("### answer")) {
+                section = 1;
+                continue;
+            }
+            if (line.equalsIgnoreCase("### 评分点") || line.equalsIgnoreCase("### scoring points")) {
+                section = 2;
+                continue;
+            }
+            if (isQuestionHeader(line)) {
                 // 题目标题行，跳过
                 continue;
             }
@@ -204,14 +249,6 @@ public class QuestionBankParser {
                     difficulty = Integer.parseInt(m.group(2));
                 }
                 headerSkipped = true;
-                continue;
-            }
-            if (line.equalsIgnoreCase("### 标准答案") || line.equalsIgnoreCase("### answer")) {
-                section = 1;
-                continue;
-            }
-            if (line.equalsIgnoreCase("### 评分点") || line.equalsIgnoreCase("### scoring points")) {
-                section = 2;
                 continue;
             }
             if (section == 0) {
@@ -252,6 +289,23 @@ public class QuestionBankParser {
     }
 
     // ---------- helpers ----------
+
+    /** 子段落标题：### 标准答案 / ### 评分点 及其英文变体 */
+    private static boolean isSubSectionTitle(String t) {
+        String lower = t.toLowerCase();
+        return lower.equals("### 标准答案")
+                || lower.equals("### answer")
+                || lower.equals("### 评分点")
+                || lower.equals("### scoring points");
+    }
+
+    /** 题目标题行：## 或 ### 开头（排除 标准答案/评分点 子段落） */
+    private static boolean isQuestionHeader(String t) {
+        if (!t.startsWith("## ") && !t.startsWith("### ")) {
+            return false;
+        }
+        return !isSubSectionTitle(t);
+    }
 
     private static String asString(Object o, String def) {
         if (o == null) return def;

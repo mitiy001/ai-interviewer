@@ -107,7 +107,8 @@ async function loadList() {
       startForm.skillId = act?.id ?? s[0].id
     }
   } catch (e: any) {
-    errorMsg.value = e.message || '加载失败'
+    const msg = e.message || '加载失败'
+    errorMsg.value = msg.includes('系统繁忙') ? '服务器繁忙，请稍后刷新重试' : msg
   } finally {
     loadingList.value = false
   }

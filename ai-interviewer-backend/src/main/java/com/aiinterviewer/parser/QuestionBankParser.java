@@ -137,11 +137,12 @@ public class QuestionBankParser {
             name = lines[0].trim().substring(2).trim();
         }
 
-        // 按 "## " 切块；遇到第一个 "## " 之前的行（题库名/说明）全部忽略
+        // 按 "## " / "### " 切块；遇到第一个分隔符之前的行（题库名/说明）全部忽略
         List<String> blocks = new ArrayList<>();
         StringBuilder cur = null;
         for (String line : lines) {
-            if (line.trim().startsWith("## ")) {
+            String t = line.trim();
+            if (t.startsWith("## ") || t.startsWith("### ")) {
                 if (cur != null) {
                     blocks.add(cur.toString());
                 }
@@ -162,9 +163,10 @@ public class QuestionBankParser {
                 questions.add(pq);
             }
         }
+        log.info("MD解析完成: 总行数={}, 切块数={}, 有效题目数={}", lines.length, blocks.size(), questions.size());
         if (questions.isEmpty()) {
             throw new BusinessException(ResultCode.PARAM_ERROR,
-                    "未解析到题目，请使用 '## ' 开头分隔每道题");
+                    "未解析到题目，请使用 '## ' 或 '### ' 开头分隔每道题");
         }
         return new ParsedBank(name, description, questions);
     }
@@ -182,7 +184,7 @@ public class QuestionBankParser {
         boolean headerSkipped = false;
         for (String raw : lines) {
             String line = raw.trim();
-            if (line.startsWith("## ")) {
+            if (line.startsWith("## ") || line.startsWith("### ")) {
                 // 题目标题行，跳过
                 continue;
             }

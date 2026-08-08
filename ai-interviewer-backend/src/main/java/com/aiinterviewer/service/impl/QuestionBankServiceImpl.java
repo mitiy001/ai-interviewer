@@ -133,7 +133,8 @@ public class QuestionBankServiceImpl implements QuestionBankService {
     private int countQuestions(Long bankId) {
         LambdaQueryWrapper<Question> qw = new LambdaQueryWrapper<>();
         qw.eq(Question::getBankId, bankId);
-        return Math.toIntExact(questionMapper.selectCount(qw));
+        Long count = questionMapper.selectCount(qw);
+        return count == null ? 0 : count.intValue();
     }
 
     private String serializePoints(List<String> points) {

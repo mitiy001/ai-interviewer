@@ -187,6 +187,7 @@ export interface InterviewResumeResp {
 export interface PracticeQuestion {
   type: 'single_choice' | 'short_answer' | 'code'
   question: string
+  options?: string[]
   answer: string
   explanation: string
   knowledgePoint: string

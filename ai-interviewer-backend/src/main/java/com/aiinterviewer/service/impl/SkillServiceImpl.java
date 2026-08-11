@@ -21,6 +21,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Skill Service 实现
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -71,12 +74,14 @@ public class SkillServiceImpl implements SkillService {
     public void activate(Long id) {
         Skill entity = mustGetOwned(id);
         Long userId = UserContext.getUserId();
+        // 先把当前用户所有 skill 置 0
         LambdaUpdateWrapper<Skill> reset = new LambdaUpdateWrapper<>();
         reset.eq(Skill::getUserId, userId)
                 .eq(Skill::getIsActive, 1)
                 .set(Skill::getIsActive, 0)
                 .set(Skill::getUpdatedAt, LocalDateTime.now());
         skillMapper.update(null, reset);
+        // 再激活指定（不按 userId 过滤，因为系统模板 userId=0）
         LambdaUpdateWrapper<Skill> upd = new LambdaUpdateWrapper<>();
         upd.eq(Skill::getId, id)
                 .set(Skill::getIsActive, 1)
@@ -88,6 +93,7 @@ public class SkillServiceImpl implements SkillService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long create(SkillReq req) {
+        // 校验
         if (req.getName() == null || req.getName().isBlank()) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "名称不能为空");
         }
@@ -122,6 +128,7 @@ public class SkillServiceImpl implements SkillService {
     @Transactional(rollbackFor = Exception.class)
     public void update(Long id, SkillReq req) {
         Skill entity = mustGetOwned(id);
+        // 系统模板不可编辑
         if (entity.getUserId() == 0L) {
             throw new BusinessException(ResultCode.FORBIDDEN, "系统模板不可编辑，请复制后修改");
         }
@@ -152,6 +159,7 @@ public class SkillServiceImpl implements SkillService {
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         Skill entity = mustGetOwned(id);
+        // 系统模板不可删除
         if (entity.getUserId() == 0L) {
             throw new BusinessException(ResultCode.FORBIDDEN, "系统模板不可删除");
         }
@@ -159,11 +167,14 @@ public class SkillServiceImpl implements SkillService {
         log.info("删除 skill id={} name={} userId={}", id, entity.getName(), UserContext.getUserId());
     }
 
+    // ---------- private ----------
+
     private Skill mustGetOwned(Long id) {
         Skill entity = skillMapper.selectById(id);
         if (entity == null) {
             throw new BusinessException(ResultCode.NOT_FOUND, "Skill 不存在");
         }
+        // 系统模板（userId=0）对所有用户可见，但不可编辑/删除
         Long userId = UserContext.getUserId();
         if (!userId.equals(entity.getUserId()) && entity.getUserId() != 0L) {
             throw new BusinessException(ResultCode.NOT_FOUND, "Skill 不存在");
@@ -216,10 +227,11 @@ public class SkillServiceImpl implements SkillService {
             return List.of();
         }
         try {
-            return objectMapper.readValue(json, new TypeReference<List<SkillResp.ScoringDimension>>() {});
+            return objectMapper.readValue(json, new TypeReference<List<SkillResp.ScoringDimension>>() {
+            });
         } catch (Exception e) {
             log.warn("解析 scoring_dimensions 失败: {}", e.getMessage());
             return List.of();
         }
     }
-}
+n        entity.setType(req.getType() != null ? req.getType().trim() : \"TECH\");\n        entity.setPromptTemplate(req.getPromptTemplate().trim());\n        entity.setScoringDimensions(toDimensionsJson(req.getScoringDimensions()));\n        entity.setIsActive(0);\n        entity.setCreatedAt(LocalDateTime.now());\n        entity.setUpdatedAt(LocalDateTime.now());\n        skillMapper.insert(entity);\n\n        log.info(\"创建 skill id={} name={} userId={}\", entity.getId(), entity.getName(), UserContext.getUserId());\n        return entity.getId();\n    }\n\n    @Override\n    @Transactional(rollbackFor = Exception.class)\n    public void update(Long id, SkillReq req) {\n        Skill entity = mustGetOwned(id);\n        // 系统模板不可编辑\n        if (entity.getUserId() == 0L) {\n            throw new BusinessException(ResultCode.FORBIDDEN, \"系统模板不可编辑，请复制后修改\");\n        }\n        if (req.getName() != null && !req.getName().isBlank()) {\n            entity.setName(req.getName().trim());\n        }\n        if (req.getPosition() != null && !req.getPosition().isBlank()) {\n            entity.setPosition(req.getPosition().trim());\n        }\n        if (req.getLevel() != null && !req.getLevel().isBlank()) {\n            entity.setLevel(req.getLevel().trim());\n        }\n        if (req.getType() != null && !req.getType().isBlank()) {\n            entity.setType(req.getType().trim());\n        }\n        if (req.getPromptTemplate() != null && !req.getPromptTemplate().isBlank()) {\n            entity.setPromptTemplate(req.getPromptTemplate().trim());\n        }\n        if (req.getScoringDimensions() != null) {\n            entity.setScoringDimensions(toDimensionsJson(req.getScoringDimensions()));\n        }\n        entity.setUpdatedAt(LocalDateTime.now());\n        skillMapper.updateById(entity);\n        log.info(\"更新 skill id={} userId={}\", id, UserContext.getUserId());\n    }\n\n    @Override\n    @Transactional(rollbackFor = Exception.class)\n    public void delete(Long id) {\n        Skill entity = mustGetOwned(id);\n        // 系统模板不可删除\n        if (entity.getUserId() == 0L) {\n            throw new BusinessException(ResultCode.FORBIDDEN, \"系统模板不可删除\");\n        }\n        skillMapper.deleteById(id);\n        log.info(\"删除 skill id={} name={} userId={}\", id, entity.getName(), UserContext.getUserId());\n    }\n\n    // ---------- private ----------\n\n    private Skill mustGetOwned(Long id) {\n        Skill entity = skillMapper.selectById(id);\n        if (entity == null) {\n            throw new BusinessException(ResultCode.NOT_FOUND, \"Skill 不存在\");\n        }\n        // 系统模板（userId=0）对所有用户可见，但不可编辑/删除\n        Long userId = UserContext.getUserId();\n        if (!userId.equals(entity.getUserId()) && entity.getUserId() != 0L) {\n            throw new BusinessException(ResultCode.NOT_FOUND, \"Skill 不存在\");\n        }\n        return entity;\n    }\n\n    private Skill mustGetActive() {\n        Long userId = UserContext.getUserId();\n        LambdaQueryWrapper<Skill> qw = new LambdaQueryWrapper<>();\n        qw.in(Skill::getUserId, List.of(0L, userId))\n                .eq(Skill::getIsActive, 1).last(\"LIMIT 1\");\n        Skill active = skillMapper.selectOne(qw);\n        if (active == null) {\n            throw new BusinessException(ResultCode.BUSINESS_ERROR,\n                    \"未找到激活的 Skill，请先在 DB 初始化默认 Java skill\");\n        }\n        return active;\n    }\n\n    private SkillResp toResp(Skill entity) {\n        SkillResp resp = new SkillResp();\n        resp.setId(entity.getId());\n        resp.setName(entity.getName());\n        resp.setPosition(entity.getPosition());\n        resp.setLevel(entity.getLevel());\n        resp.setType(entity.getType());\n        resp.setPromptTemplate(entity.getPromptTemplate());\n        resp.setScoringDimensions(parseDimensions(entity.getScoringDimensions()));\n        resp.setIsActive(entity.getIsActive());\n        resp.setCreatedAt(entity.getCreatedAt());\n        resp.setUpdatedAt(entity.getUpdatedAt());\n        return resp;\n    }\n\n    private String toDimensionsJson(List<SkillReq.ScoringDimensionReq> dimensions) {\n        if (dimensions == null || dimensions.isEmpty()) {\n            return \"[]\";\n        }\n        try {\n            return objectMapper.writeValueAsString(dimensions);\n        } catch (Exception e) {\n            log.warn(\"序列化 scoring_dimensions 失败: {}\", e.getMessage());\n            return \"[]\";\n        }\n    }\n\n    private List<SkillResp.ScoringDimension> parseDimensions(String json) {\n        if (json == null || json.isBlank()) {\n            return List.of();\n        }\n        try {\n            return objectMapper.readValue(json, new TypeReference<List<SkillResp.ScoringDimension>>() {\n            });\n        } catch (Exception e) {\n            log.warn(\"解析 scoring_dimensions 失败: {}\", e.getMessage());\n            return List.of();\n        }\n    }\n}"}]}]}

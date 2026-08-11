@@ -56,6 +56,7 @@ public class InterviewServiceImpl implements InterviewService {
     private final SkillService skillService;
     private final InterviewExecutor interviewExecutor;
 
+    /** 回答提交速率限制：每 10 秒最多 5 次 */
     private final RateLimiter answerRateLimiter = new RateLimiter(5, 10_000);
 
     @PostConstruct

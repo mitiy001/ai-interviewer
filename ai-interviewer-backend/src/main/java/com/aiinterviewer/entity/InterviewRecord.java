@@ -18,10 +18,12 @@ public class InterviewRecord {
     private Long skillId;
     private Long resumeId;
     private Long bankId;
+    /** 面试类型：TECH（技术面）/ HR（人事面），默认 TECH */
     private String interviewType;
     private String status;
     private Integer maxTurns;
     private Integer totalScore;
+    /** 面试状态上下文 JSON（用于断线重连恢复） */
     private String context;
     private LocalDateTime startTime;
     private LocalDateTime endTime;

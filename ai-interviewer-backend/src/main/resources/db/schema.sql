@@ -9,6 +9,7 @@ USE ai_interviewer;
 
 -- ⚠ 升级语句（已有库必须执行，新库已有该列时将跳过）
 ALTER TABLE `skill` ADD COLUMN `type` VARCHAR(16) NOT NULL DEFAULT 'TECH' COMMENT 'TECH/HR' AFTER `level`;
+ALTER TABLE `interview_record` ADD COLUMN `interview_type` VARCHAR(16) NOT NULL DEFAULT 'TECH' COMMENT 'TECH/HR' AFTER `bank_id`;
 
 -- 1. 用户表
 CREATE TABLE IF NOT EXISTS `user` (
@@ -117,6 +118,7 @@ CREATE TABLE IF NOT EXISTS interview_record (
   skill_id         BIGINT NOT NULL,
   resume_id        BIGINT DEFAULT NULL,
   bank_id          BIGINT NOT NULL,
+  interview_type   VARCHAR(16) NOT NULL DEFAULT 'TECH' COMMENT 'TECH/HR',
   status           VARCHAR(16) NOT NULL DEFAULT 'RUNNING' COMMENT 'RUNNING/FINISHED/ABORTED',
   max_turns        INT NOT NULL DEFAULT 5 COMMENT '本轮面试轮次上限',
   total_score      INT DEFAULT NULL,
@@ -131,6 +133,7 @@ CREATE TABLE IF NOT EXISTS interview_record (
 -- 已有库升级语句
 -- ⚠ ALTER TABLE interview_record ADD COLUMN max_turns INT NOT NULL DEFAULT 5 COMMENT '本轮面试轮次上限' AFTER status;
 -- ⚠ ALTER TABLE interview_record ADD COLUMN context LONGTEXT DEFAULT NULL COMMENT '面试状态上下文JSON（用于断线重连恢复）' AFTER total_score;
+-- ⚠ ALTER TABLE interview_record ADD COLUMN interview_type VARCHAR(16) NOT NULL DEFAULT 'TECH' COMMENT 'TECH/HR' AFTER bank_id;
 
 -- 8. 每题回答与判定
 CREATE TABLE IF NOT EXISTS answer_record (

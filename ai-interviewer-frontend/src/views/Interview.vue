@@ -46,6 +46,7 @@ const startForm = reactive({
   bankId: undefined as number | undefined,
   skillId: undefined as number | undefined,
   maxTurns: 5,
+  interviewType: 'TECH',
 })
 
 // ===== 会话状态 =====
@@ -83,6 +84,14 @@ const canSend = computed(() => waitingAnswer.value && answerInput.value.trim().l
 const activeSkill = computed(() => skills.value.find((s) => s.isActive === 1))
 const activeModel = computed(() => models.value.find((m) => m.isActive === 1))
 
+/** 根据面试类型过滤可用的 Skill */
+const filteredSkills = computed(() => {
+  if (startForm.interviewType === 'HR') {
+    return skills.value.filter(s => s.type === 'HR')
+  }
+  return skills.value.filter(s => !s.type || s.type === 'TECH')
+})
+
 async function loadList() {
   loadingList.value = true
   errorMsg.value = ''
@@ -99,7 +108,6 @@ async function loadList() {
     banks.value = b
     skills.value = s
     models.value = m
-    // 默认选中最新
     if (r.length) startForm.resumeId = r[0].id
     if (b.length) startForm.bankId = b[0].id
     if (s.length) {
@@ -107,7 +115,8 @@ async function loadList() {
       startForm.skillId = act?.id ?? s[0].id
     }
   } catch (e: any) {
-    errorMsg.value = e.message || '加载失败'
+    const msg = e.message || '加载失败'
+    errorMsg.value = msg.includes('系统繁忙') ? '服务器繁忙，请稍后刷新重试' : msg
   } finally {
     loadingList.value = false
   }
@@ -134,6 +143,7 @@ async function startInterview() {
       bankId: startForm.bankId,
       skillId: startForm.skillId,
       maxTurns: startForm.maxTurns,
+      interviewType: startForm.interviewType,
     })
     interviewId.value = resp.interviewId
     messages.value = []
@@ -153,7 +163,6 @@ function connectSse(id: number) {
     eventSource = null
   }
   const url = InterviewApi.streamUrl(id)
-  // withCredentials: true 确保跨域时携带 httpOnly Cookie（JWT 认证）
   const es = new EventSource(url, { withCredentials: true })
   eventSource = es
 
@@ -193,7 +202,6 @@ function connectSse(id: number) {
 
   es.addEventListener('judge', (e) => {
     const data = JSON.parse((e as MessageEvent).data)
-    // 找到最近一条 user 消息附加分数；同时单独推一条 system 评语
     const lastUser = [...messages.value].reverse().find((m) => m.role === 'user')
     if (lastUser) {
       lastUser.score = data.score
@@ -224,8 +232,6 @@ function connectSse(id: number) {
   })
 
   es.addEventListener('error', (e) => {
-    // EventSource 在连接关闭时也会触发 error，需要区分
-    // 若已经 finished，则忽略
     if (finished.value) return
     const ev = e as MessageEvent
     const msg = ev.data
@@ -239,18 +245,12 @@ function connectSse(id: number) {
       : 'SSE 连接异常或中断'
     errorMsg.value = msg
     waitingAnswer.value = false
-    // 主动关闭避免 EventSource 无限重连
     es.close()
     eventSource = null
-    // 尝试自动重连
     attemptReconnect(interviewId.value)
   })
 }
 
-/**
- * 尝试断线重连：调用 resume 接口恢复状态，然后重新连接 SSE。
- * 使用指数退避策略，最多重试 MAX_RECONNECT_ATTEMPTS 次。
- */
 async function attemptReconnect(id: number | null) {
   if (reconnecting.value || finished.value || id === null) return
   if (reconnectCount.value >= MAX_RECONNECT_ATTEMPTS) {
@@ -265,11 +265,9 @@ async function attemptReconnect(id: number | null) {
   errorMsg.value = `检测到连接中断，正在尝试第 ${attempt} 次重连（共 ${MAX_RECONNECT_ATTEMPTS} 次）…`
 
   try {
-    // 1. 调用 resume 接口获取历史状态
     const resumeData = await InterviewApi.resume(id)
 
     if (resumeData.status === 'FINISHED' || resumeData.status === 'ABORTED') {
-      // 面试已结束，不再重连
       finished.value = true
       waitingAnswer.value = false
       reconnecting.value = false
@@ -279,14 +277,12 @@ async function attemptReconnect(id: number | null) {
       return
     }
 
-    // 2. 恢复状态
     phase.value = resumeData.phase
     waitingAnswer.value = resumeData.waitingAnswer
     if (resumeData.currentQuestion) {
       answerInput.value = ''
     }
 
-    // 3. 重建消息历史
     messages.value = resumeData.messages.map((m) => ({
       role: m.role as ChatRole,
       content: m.content,
@@ -295,12 +291,10 @@ async function attemptReconnect(id: number | null) {
       judgeReason: m.judgeReason,
     }))
 
-    // 4. 清除错误提示，显示重连成功
     errorMsg.value = '重连成功，恢复面试中…'
     await nextTick()
     scrollBottom()
 
-    // 5. 等待一小段时间后重新连接 SSE
     if (reconnectTimer) clearTimeout(reconnectTimer)
     reconnectTimer = setTimeout(() => {
       reconnecting.value = false
@@ -308,7 +302,6 @@ async function attemptReconnect(id: number | null) {
       connectSse(id)
     }, 500)
   } catch (e: any) {
-    // 重连失败，按指数退避重试
     const delay = Math.min(1000 * Math.pow(2, attempt), 15000)
     errorMsg.value = `第 ${attempt} 次重连失败（${e.message || '未知错误'}），${Math.round(delay / 1000)} 秒后再次尝试…`
     if (reconnectTimer) clearTimeout(reconnectTimer)
@@ -338,14 +331,12 @@ async function sendAnswer() {
   }
 }
 
-/** 切换麦克风录音：未录音时开始，录音中时停止并把结果填入输入框 */
 async function toggleMic() {
   if (!sttSupported) {
     errorMsg.value = '当前浏览器不支持语音识别，请使用 Chrome / Edge'
     return
   }
   if (sttRecording.value) {
-    // 停止录音并等待后端识别结果
     const text = await stopRecognition()
     if (text) answerInput.value = text
   } else {
@@ -368,12 +359,10 @@ async function exitInterview() {
     eventSource = null
   }
   ttsCancel()
-  // 通知后端中断面试，同步更新状态为 ABORTED，避免 RUNNING 残留导致无法删除
   if (abortId !== null && !finished.value) {
     try {
       await InterviewApi.abort(abortId)
     } catch (e: any) {
-      // 中断失败不阻塞退出流程，后端删除接口仍会兜底处理
       console.warn('[Interview] 中断面试失败:', e?.message || e)
     }
   }
@@ -397,6 +386,10 @@ function statusBadgeClass(s: string): string {
   return 'badge badge-warning'
 }
 
+function interviewTypeLabel(type?: string): string {
+  return type === 'HR' ? '人事面' : '技术面'
+}
+
 onMounted(async () => {
   await loadList()
   preloadVoices()
@@ -406,22 +399,19 @@ onUnmounted(() => {
   if (reconnectTimer) clearTimeout(reconnectTimer)
   ttsCancel()
   abortRecognition()
-  // 路由切换时也通知后端中断（fire-and-forget，不阻塞卸载）
   const abortId = interviewId.value
   if (abortId !== null && !finished.value) {
-    InterviewApi.abort(abortId).catch(() => { /* 忽略，删除接口会兜底 */ })
+    InterviewApi.abort(abortId).catch(() => { })
   }
 })
 </script>
 
 <template>
   <div class="col">
-    <!-- 断线重连提示 -->
     <p v-if="reconnecting" class="reconnect-banner">
       <span class="reconnect-icon">⟳</span>
       <span>{{ errorMsg }}</span>
     </p>
-    <!-- 普通错误提示 -->
     <p v-else-if="errorMsg" class="error-text" style="background: #fef2f2; color: #dc2626; padding: 12px; border-radius: 8px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
       <span>{{ errorMsg }}</span>
       <button class="btn btn-danger" @click="exitInterview" v-if="interviewId !== null" style="flex-shrink: 0;">
@@ -429,7 +419,6 @@ onUnmounted(() => {
       </button>
     </p>
 
-    <!-- 未开始面试：列表 + 启动表单 -->
     <template v-if="interviewId === null">
       <div class="card">
         <div class="row" style="justify-content: space-between;">
@@ -452,10 +441,30 @@ onUnmounted(() => {
               <option v-for="b in banks" :key="b.id" :value="b.id">{{ b.name }} ({{ b.questionCount }}题)</option>
             </select>
           </div>
+          <div class="form-group" style="width: 160px;">
+            <label>面试类型</label>
+            <div class="row" style="gap: 8px; align-items: stretch;">
+              <button
+                class="btn"
+                :class="startForm.interviewType === 'TECH' ? 'btn-gradient' : 'btn-secondary'"
+                style="flex: 1; padding: 8px 12px;"
+                @click="startForm.interviewType = 'TECH'; startForm.skillId = filteredSkills.length > 0 ? filteredSkills[0].id : undefined"
+              >技术面</button>
+              <button
+                class="btn"
+                :class="startForm.interviewType === 'HR' ? 'btn-gradient' : 'btn-secondary'"
+                style="flex: 1; padding: 8px 12px;"
+                @click="startForm.interviewType = 'HR'; startForm.skillId = filteredSkills.length > 0 ? filteredSkills[0].id : undefined"
+              >人事面</button>
+            </div>
+          </div>
           <div class="form-group" style="flex: 1; min-width: 220px;">
-            <label>面试等级 / Skill</label>
+            <label>{{ startForm.interviewType === 'HR' ? 'HR 面试官' : '面试等级 / Skill' }}</label>
             <select v-model="startForm.skillId" class="input">
-              <option v-for="s in skills" :key="s.id" :value="s.id">
+              <option v-if="filteredSkills.length === 0" :value="undefined" disabled>
+                {{ startForm.interviewType === 'HR' ? '暂无 HR 面试官，请先创建' : '暂无可用 Skill' }}
+              </option>
+              <option v-for="s in filteredSkills" :key="s.id" :value="s.id">
                 {{ s.name }}{{ s.isActive === 1 ? '（已激活）' : '' }}
               </option>
             </select>
@@ -469,7 +478,9 @@ onUnmounted(() => {
           <span class="muted">当前激活模型：</span>
           <span v-if="activeModel" class="mono">{{ activeModel.name }} / {{ activeModel.model }}</span>
           <span v-else class="error-text">未激活</span>
-          <span class="muted" style="margin-left: 16px;">激活 Skill：</span>
+          <span class="muted" style="margin-left: 16px;">{{
+            startForm.interviewType === 'HR' ? 'HR 面试官：' : '激活 Skill：'
+          }}</span>
           <span v-if="activeSkill" class="mono">{{ activeSkill.name }}</span>
           <span v-else class="error-text">未激活</span>
         </div>
@@ -485,6 +496,7 @@ onUnmounted(() => {
               <thead>
                 <tr>
                   <th>ID</th>
+                  <th>类型</th>
                   <th>状态</th>
                   <th>轮次</th>
                   <th>总分</th>
@@ -496,6 +508,7 @@ onUnmounted(() => {
               <tbody>
                 <tr v-for="r in list" :key="r.id">
                   <td>#{{ r.id }}</td>
+                  <td><span class="badge">{{ interviewTypeLabel(r.interviewType) }}</span></td>
                   <td><span :class="statusBadgeClass(r.status)">{{ r.status }}</span></td>
                   <td>{{ r.maxTurns }}</td>
                   <td>{{ r.totalScore ?? '-' }}</td>
@@ -512,7 +525,6 @@ onUnmounted(() => {
       </div>
     </template>
 
-    <!-- 面试中：聊天界面 -->
     <template v-else>
       <div class="card chat-card">
         <div class="chat-header">
@@ -627,7 +639,6 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* ===== 头部 ===== */
 .chat-header {
   display: flex;
   justify-content: space-between;
@@ -698,7 +709,6 @@ onUnmounted(() => {
   animation: pulse 1s ease-in-out infinite;
 }
 
-/* ===== 消息列表 ===== */
 .chat-body {
   flex: 1;
   overflow-y: auto;
@@ -728,7 +738,6 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-/* 打字三点动画 */
 .typing-dots {
   display: inline-flex;
   gap: 4px;
@@ -751,7 +760,6 @@ onUnmounted(() => {
   animation-delay: 0.4s;
 }
 
-/* ===== 消息气泡 ===== */
 .chat-msg {
   display: flex;
   gap: 10px;
@@ -873,7 +881,6 @@ onUnmounted(() => {
   opacity: 0.8;
 }
 
-/* ===== 输入区 ===== */
 .chat-input {
   display: flex;
   flex-direction: column;
@@ -903,7 +910,6 @@ onUnmounted(() => {
   padding: 0 18px;
 }
 
-/* 麦克风按钮 */
 .mic-btn {
   display: inline-flex;
   align-items: center;
@@ -935,7 +941,6 @@ onUnmounted(() => {
   font-size: 15px;
   line-height: 1;
 }
-/* 录音中脉动指示 */
 .mic-pulse {
   width: 10px;
   height: 10px;
@@ -954,7 +959,6 @@ onUnmounted(() => {
   margin: 0;
 }
 
-/* 断线重连横幅 */
 .reconnect-banner {
   display: flex;
   align-items: center;
@@ -982,17 +986,14 @@ onUnmounted(() => {
   50% { opacity: 0.85; }
 }
 
-/* 语音播报开启态高亮 */
 .tts-on {
   background: var(--success-light);
   border-color: var(--success-border);
   color: var(--success);
 }
 
-/* ===== 移动端响应式 ===== */
 @media (max-width: 768px) {
   .chat-card {
-    /* dvh: 动态视口高度，解决安卓浏览器地址栏遮挡问题 */
     height: calc(100dvh - 120px);
     padding: 12px;
   }
@@ -1028,7 +1029,6 @@ onUnmounted(() => {
   }
 }
 
-/* ===== 历史记录表格：限高 + 表头吸顶 + 横向滚动 ===== */
 .history-table-wrap {
   max-height: 420px;
   overflow-y: auto;
@@ -1036,25 +1036,20 @@ onUnmounted(() => {
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: var(--radius-md, 8px);
 }
-/* 表头吸顶：滚动时表头固定在顶部 */
 .history-table-wrap .table thead th {
   position: sticky;
   top: 0;
   z-index: 1;
   background: var(--bg-secondary, #f9fafb);
-  /* 兼容部分浏览器：sticky 时 border 会消失，用 box-shadow 模拟下边框 */
   box-shadow: inset 0 -1px 0 var(--border-color, #e5e7eb);
 }
-/* 确保单元格不换行导致行高跳动 */
 .history-table-wrap .table td {
   white-space: nowrap;
 }
-/* 时间列允许换行，避免过长时间戳撑宽列 */
 .history-table-wrap .table td.muted {
   white-space: normal;
 }
 
-/* 移动端：缩小最大高度 */
 @media (max-width: 768px) {
   .history-table-wrap {
     max-height: 320px;

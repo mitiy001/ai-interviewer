@@ -82,6 +82,10 @@ public final class InterviewState {
     public static final String LAST_JUDGEMENT = "last_judgement";
     /** 剩余轮次上限（Integer，启动时预加载） */
     public static final String MAX_TURNS = "max_turns";
+    /** 已用题目 ID 列表（List<Long>，APPEND，用于跟踪已用题目防止重复使用） */
+    public static final String USED_QUESTION_IDS = "used_question_ids";
+    /** 面试类型（String：TECH/HR，启动时预加载） */
+    public static final String INTERVIEW_TYPE = "interview_type";
 
     /**
      * 状态工厂：创建带 KeyStrategy 注册的 OverAllState。
@@ -127,6 +131,8 @@ public final class InterviewState {
         strategies.put(HISTORY, new ReplaceStrategy());
         strategies.put(LAST_JUDGEMENT, new ReplaceStrategy());
         strategies.put(MAX_TURNS, new ReplaceStrategy());
+        strategies.put(USED_QUESTION_IDS, new AppendStrategy());
+        strategies.put(INTERVIEW_TYPE, new ReplaceStrategy());
         state.registerKeyAndStrategy(strategies);
         return state;
     }

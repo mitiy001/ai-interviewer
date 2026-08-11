@@ -24,4 +24,7 @@ public class StartReq {
 
     /** 轮次上限（可选，默认 5，不超过题库题目数） */
     private Integer maxTurns;
+
+    /** 面试类型：TECH（技术面）/ HR（人事面），默认 TECH */
+    private String interviewType;
 }

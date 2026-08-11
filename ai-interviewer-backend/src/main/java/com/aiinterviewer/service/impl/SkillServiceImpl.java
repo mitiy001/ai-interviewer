@@ -112,6 +112,7 @@ public class SkillServiceImpl implements SkillService {
         entity.setName(req.getName().trim());
         entity.setPosition(req.getPosition().trim());
         entity.setLevel(req.getLevel().trim());
+        entity.setType(req.getType() != null ? req.getType().trim() : "TECH");
         entity.setPromptTemplate(req.getPromptTemplate().trim());
         entity.setScoringDimensions(toDimensionsJson(req.getScoringDimensions()));
         entity.setIsActive(0);
@@ -139,6 +140,9 @@ public class SkillServiceImpl implements SkillService {
         }
         if (req.getLevel() != null && !req.getLevel().isBlank()) {
             entity.setLevel(req.getLevel().trim());
+        }
+        if (req.getType() != null && !req.getType().isBlank()) {
+            entity.setType(req.getType().trim());
         }
         if (req.getPromptTemplate() != null && !req.getPromptTemplate().isBlank()) {
             entity.setPromptTemplate(req.getPromptTemplate().trim());
@@ -197,6 +201,7 @@ public class SkillServiceImpl implements SkillService {
         resp.setName(entity.getName());
         resp.setPosition(entity.getPosition());
         resp.setLevel(entity.getLevel());
+        resp.setType(entity.getType());
         resp.setPromptTemplate(entity.getPromptTemplate());
         resp.setScoringDimensions(parseDimensions(entity.getScoringDimensions()));
         resp.setIsActive(entity.getIsActive());

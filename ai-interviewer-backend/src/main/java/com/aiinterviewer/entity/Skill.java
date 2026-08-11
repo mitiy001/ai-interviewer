@@ -18,6 +18,8 @@ public class Skill {
     private String position;
     /** 工程师等级：junior/mid/senior */
     private String level;
+    /** 技能类型：TECH（技术面）/ HR（人事面），默认 TECH */
+    private String type;
     private String promptTemplate;
     private String scoringDimensions;
     private Integer isActive;

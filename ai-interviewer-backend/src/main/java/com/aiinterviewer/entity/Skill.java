@@ -16,8 +16,8 @@ public class Skill {
     private Long userId;
     private String name;
     private String position;
-    /** 工程师等级：junior/mid/senior */
     private String level;
+    private String type;
     private String promptTemplate;
     private String scoringDimensions;
     private Integer isActive;

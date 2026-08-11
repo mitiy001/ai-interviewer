@@ -10,15 +10,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-/**
- * 出题节点：按轮次从题库取下一题，结合简历/上轮判定生成提问。
- * <p>
- * 输入 state：QUESTIONS, TURN_INDEX(从0开始), RESUME_TEXT, POSITION, HISTORY, LAST_JUDGEMENT, MODEL_CONFIG_ID
- * 输出 state：PHASE=QUESTION, TURN_INDEX+1, CURRENT_QUESTION_ID, CURRENT_QUESTION, STANDARD_ANSWER, SCORING_POINTS, AI_OUTPUT, MESSAGES, HISTORY
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -32,7 +31,7 @@ public class QuestionNode {
         int turnIndex = state.value(InterviewState.TURN_INDEX, 0);
         int newTurn = turnIndex + 1;
 
-        JsonNode question = pickQuestion(state, newTurn - 1);
+        JsonNode question = pickUnusedQuestion(state);
         Long questionId = question.path("id").asLong();
         String content = question.path("content").asText("");
         String standardAnswer = question.path("standard_answer").asText("");
@@ -43,8 +42,10 @@ public class QuestionNode {
         String resumeSummary = nodeSupport.text(state, InterviewState.RESUME_TEXT);
         String history = nodeSupport.text(state, InterviewState.HISTORY);
         String lastJudgement = nodeSupport.text(state, InterviewState.LAST_JUDGEMENT);
+        String interviewType = nodeSupport.text(state, InterviewState.INTERVIEW_TYPE);
 
-        String prompt = promptLoader.render("question", Map.of(
+        String promptName = "HR".equals(interviewType) ? "hr_question" : "question";
+        String prompt = promptLoader.render(promptName, Map.of(
                 "position", position.isEmpty() ? "Java" : position,
                 "level", level.isEmpty() ? "mid" : level,
                 "resume_summary", resumeSummary.isEmpty() ? "(未提供简历)" : resumeSummary,
@@ -54,11 +55,11 @@ public class QuestionNode {
                 "last_judgement", lastJudgement.isEmpty() ? "(首轮，无上轮判定)" : lastJudgement
         ));
 
-        log.info("[node:question] 轮次 {} 出题 questionId={}", newTurn, questionId);
+        log.info("[node:question] 轮次 {} 出题 questionId={} interviewType={}", newTurn, questionId, interviewType);
         ChatClient client = nodeSupport.getChatClient(state);
         String aiQuestion = callLlm(client, prompt);
         if (aiQuestion == null || aiQuestion.isBlank()) {
-            aiQuestion = content; // 兜底：直接用原题
+            aiQuestion = content;
         }
 
         String message = "AI: " + aiQuestion;
@@ -74,21 +75,45 @@ public class QuestionNode {
         result.put(InterviewState.AI_OUTPUT, aiQuestion);
         result.put(InterviewState.MESSAGES, message);
         result.put(InterviewState.HISTORY, newHistory);
+        result.put(InterviewState.USED_QUESTION_IDS, questionId);
         return result;
     }
 
-    /** 取第 idx 题（0-based），越界抛异常（编排层应避免走到这里） */
-    private JsonNode pickQuestion(OverAllState state, int idx) {
+    @SuppressWarnings("unchecked")
+    private JsonNode pickUnusedQuestion(OverAllState state) {
         String questionsJson = nodeSupport.text(state, InterviewState.QUESTIONS);
         try {
             JsonNode arr = objectMapper.readTree(questionsJson);
             if (!arr.isArray() || arr.size() == 0) {
                 throw new IllegalStateException("题库为空，无法出题");
             }
-            if (idx >= arr.size()) {
-                throw new IllegalStateException("题目已用完 (idx=" + idx + ", total=" + arr.size() + ")");
+
+            Object usedObj = state.value(InterviewState.USED_QUESTION_IDS, new ArrayList<Long>());
+            Set<Long> usedIds = new HashSet<>();
+            if (usedObj instanceof List) {
+                for (Object o : (List<Object>) usedObj) {
+                    if (o instanceof Number n) {
+                        usedIds.add(n.longValue());
+                    }
+                }
             }
-            return arr.get(idx);
+
+            List<JsonNode> available = new ArrayList<>();
+            for (JsonNode q : arr) {
+                long qid = q.path("id").asLong();
+                if (!usedIds.contains(qid)) {
+                    available.add(q);
+                }
+            }
+
+            if (available.isEmpty()) {
+                throw new IllegalStateException("所有题目已使用完毕，无法继续出题");
+            }
+
+            Collections.shuffle(available);
+            JsonNode picked = available.get(0);
+            log.info("从 {} 道可用题目中随机选取 questionId={}", available.size(), picked.path("id").asLong());
+            return picked;
         } catch (IllegalStateException e) {
             throw e;
         } catch (Exception e) {

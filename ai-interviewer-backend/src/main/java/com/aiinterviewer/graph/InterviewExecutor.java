@@ -33,6 +33,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -550,8 +551,9 @@ public class InterviewExecutor {
 
         List<Question> questions = questionMapper.selectList(
                 new LambdaQueryWrapper<Question>()
-                        .eq(Question::getBankId, record.getBankId())
-                        .orderByAsc(Question::getId));
+                        .eq(Question::getBankId, record.getBankId()));
+        // 随机打乱题目顺序，确保每次面试提问顺序不同
+        Collections.shuffle(questions);
         String questionsJson = buildQuestionsJson(questions);
 
         Skill skill = skillMapper.selectById(record.getSkillId());

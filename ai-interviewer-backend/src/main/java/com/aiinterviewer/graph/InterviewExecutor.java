@@ -33,7 +33,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -370,6 +369,8 @@ public class InterviewExecutor {
             ctx.put("scores", state.value(InterviewState.SCORES, List.of()));
             ctx.put("last_judgement", state.value(InterviewState.LAST_JUDGEMENT, ""));
             ctx.put("ai_output", state.value(InterviewState.AI_OUTPUT, ""));
+            ctx.put("used_question_ids", state.value(InterviewState.USED_QUESTION_IDS, List.of()));
+            ctx.put("interview_type", state.value(InterviewState.INTERVIEW_TYPE, "TECH"));
 
             String json = objectMapper.writeValueAsString(ctx);
             InterviewRecord upd = new InterviewRecord();
@@ -455,6 +456,20 @@ public class InterviewExecutor {
             }
             if (ctx.containsKey("ai_output")) {
                 state.input(Map.of(InterviewState.AI_OUTPUT, str(ctx, "ai_output", "")));
+            }
+            if (ctx.containsKey("used_question_ids")) {
+                @SuppressWarnings("unchecked")
+                List<Object> usedIds = (List<Object>) ctx.get("used_question_ids");
+                if (usedIds != null) {
+                    for (Object id : usedIds) {
+                        if (id instanceof Number n) {
+                            state.input(Map.of(InterviewState.USED_QUESTION_IDS, n.longValue()));
+                        }
+                    }
+                }
+            }
+            if (ctx.containsKey("interview_type")) {
+                state.input(Map.of(InterviewState.INTERVIEW_TYPE, str(ctx, "interview_type", "TECH")));
             }
 
             return state;
@@ -552,8 +567,6 @@ public class InterviewExecutor {
         List<Question> questions = questionMapper.selectList(
                 new LambdaQueryWrapper<Question>()
                         .eq(Question::getBankId, record.getBankId()));
-        // 随机打乱题目顺序，确保每次面试提问顺序不同
-        Collections.shuffle(questions);
         String questionsJson = buildQuestionsJson(questions);
 
         Skill skill = skillMapper.selectById(record.getSkillId());
@@ -563,6 +576,8 @@ public class InterviewExecutor {
                 ? skill.getPosition() : "Java";
         String level = skill != null && skill.getLevel() != null
                 ? skill.getLevel() : "mid";
+        String interviewType = record.getInterviewType() != null
+                ? record.getInterviewType() : "TECH";
 
         Map<String, Object> initial = new HashMap<>();
         initial.put(InterviewState.INTERVIEW_ID, record.getId());
@@ -572,6 +587,7 @@ public class InterviewExecutor {
         initial.put(InterviewState.SKILL_PROMPT, skillPrompt);
         initial.put(InterviewState.POSITION, position);
         initial.put(InterviewState.LEVEL, level);
+        initial.put(InterviewState.INTERVIEW_TYPE, interviewType);
         initial.put(InterviewState.TURN_INDEX, 0);
         initial.put(InterviewState.MAX_TURNS, record.getMaxTurns() == null ? 5 : record.getMaxTurns());
         state.input(initial);

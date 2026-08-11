@@ -56,7 +56,6 @@ public class InterviewServiceImpl implements InterviewService {
     private final SkillService skillService;
     private final InterviewExecutor interviewExecutor;
 
-    /** 回答提交速率限制：每 10 秒最多 5 次 */
     private final RateLimiter answerRateLimiter = new RateLimiter(5, 10_000);
 
     @PostConstruct
@@ -95,6 +94,8 @@ public class InterviewServiceImpl implements InterviewService {
             record.setResumeId(resume.getId());
         }
         record.setBankId(bank.getId());
+        record.setInterviewType(req != null && req.getInterviewType() != null
+                ? req.getInterviewType() : "TECH");
         record.setStatus("RUNNING");
         record.setMaxTurns(maxTurns);
         record.setTotalScore(0);
@@ -189,6 +190,7 @@ public class InterviewServiceImpl implements InterviewService {
         item.setStatus(r.getStatus());
         item.setMaxTurns(r.getMaxTurns());
         item.setTotalScore(r.getTotalScore());
+        item.setInterviewType(r.getInterviewType());
         item.setStartTime(r.getStartTime());
         item.setEndTime(r.getEndTime());
         return item;

@@ -20,9 +20,6 @@ import java.util.Set;
 
 /**
  * 出题节点：从题库中随机选取未使用过的题目，结合简历/上轮判定生成提问。
- * <p>
- * 输入 state：QUESTIONS, TURN_INDEX(从0开始), RESUME_TEXT, POSITION, HISTORY, LAST_JUDGEMENT, MODEL_CONFIG_ID, INTERVIEW_TYPE, USED_QUESTION_IDS
- * 输出 state：PHASE=QUESTION, TURN_INDEX+1, CURRENT_QUESTION_ID, CURRENT_QUESTION, STANDARD_ANSWER, SCORING_POINTS, AI_OUTPUT, MESSAGES, HISTORY, USED_QUESTION_IDS
  */
 @Slf4j
 @Component
@@ -50,7 +47,6 @@ public class QuestionNode {
         String lastJudgement = nodeSupport.text(state, InterviewState.LAST_JUDGEMENT);
         String interviewType = nodeSupport.text(state, InterviewState.INTERVIEW_TYPE);
 
-        // 根据面试类型选择 prompt 模板
         String promptName = "HR".equals(interviewType) ? "hr_question" : "question";
         String prompt = promptLoader.render(promptName, Map.of(
                 "position", position.isEmpty() ? "Java" : position,
@@ -66,7 +62,7 @@ public class QuestionNode {
         ChatClient client = nodeSupport.getChatClient(state);
         String aiQuestion = callLlm(client, prompt);
         if (aiQuestion == null || aiQuestion.isBlank()) {
-            aiQuestion = content; // 兜底：直接用原题
+            aiQuestion = content;
         }
 
         String message = "AI: " + aiQuestion;
@@ -82,12 +78,10 @@ public class QuestionNode {
         result.put(InterviewState.AI_OUTPUT, aiQuestion);
         result.put(InterviewState.MESSAGES, message);
         result.put(InterviewState.HISTORY, newHistory);
-        // 记录已用题目 ID
         result.put(InterviewState.USED_QUESTION_IDS, questionId);
         return result;
     }
 
-    /** 从题库中随机选取一个未使用过的题目 */
     @SuppressWarnings("unchecked")
     private JsonNode pickUnusedQuestion(OverAllState state) {
         String questionsJson = nodeSupport.text(state, InterviewState.QUESTIONS);
@@ -97,7 +91,6 @@ public class QuestionNode {
                 throw new IllegalStateException("题库为空，无法出题");
             }
 
-            // 获取已用题目 ID 集合
             Object usedObj = state.value(InterviewState.USED_QUESTION_IDS, new ArrayList<Long>());
             Set<Long> usedIds = new HashSet<>();
             if (usedObj instanceof List) {
@@ -108,7 +101,6 @@ public class QuestionNode {
                 }
             }
 
-            // 过滤未使用的题目
             List<JsonNode> available = new ArrayList<>();
             for (JsonNode q : arr) {
                 long qid = q.path("id").asLong();
@@ -121,7 +113,6 @@ public class QuestionNode {
                 throw new IllegalStateException("所有题目已使用完毕，无法继续出题");
             }
 
-            // 从剩余题目中随机选取
             Collections.shuffle(available);
             JsonNode picked = available.get(0);
             log.info("从 {} 道可用题目中随机选取 questionId={}", available.size(), picked.path("id").asLong());

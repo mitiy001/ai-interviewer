@@ -16,13 +16,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * 判定节点：用 Skill 标准判定用户上一轮回答，保存答题记录。
- * <p>
- * 输入 state：CURRENT_QUESTION, CURRENT_QUESTION_ID, STANDARD_ANSWER, SCORING_POINTS, USER_ANSWER, SKILL_PROMPT, POSITION, INTERVIEW_ID, TURN_INDEX, HISTORY, MODEL_CONFIG_ID
- * 输出 state：PHASE=JUDGE, AI_OUTPUT, JUDGEMENTS, SCORES, LAST_JUDGEMENT, MESSAGES, HISTORY
- * 副作用：插入 answer_record 表
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -43,7 +36,6 @@ public class JudgeNode {
         String level = nodeSupport.text(state, InterviewState.LEVEL);
         String interviewType = nodeSupport.text(state, InterviewState.INTERVIEW_TYPE);
 
-        // 根据面试类型选择 prompt 模板
         String promptName = "HR".equals(interviewType) ? "hr_judge" : "judge";
         String prompt = promptLoader.render(promptName, Map.of(
                 "skill_prompt", skillPrompt,
@@ -62,7 +54,6 @@ public class JudgeNode {
         JudgeResult parsed = parseJudgement(llmResult);
         String judgementJson = parsed.rawJson != null ? parsed.rawJson : llmResult;
 
-        // 保存答题记录
         saveAnswerRecord(state, parsed);
 
         String aiText = parsed.reason != null ? parsed.reason : "判定完成";
@@ -90,7 +81,6 @@ public class JudgeNode {
             r.reason = "判定失败：LLM 未返回内容";
             return r;
         }
-        // 清理可能的 markdown 代码块标记
         String cleaned = llmResult.trim();
         if (cleaned.startsWith("```")) {
             cleaned = cleaned.replaceAll("^```\\w*\\s*", "").replaceAll("\\s*```$", "").trim();

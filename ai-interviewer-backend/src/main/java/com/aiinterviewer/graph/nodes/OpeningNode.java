@@ -11,12 +11,6 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * 开场白节点：生成面试开场白。
- * <p>
- * 输入 state：POSITION, RESUME_TEXT, MODEL_CONFIG_ID
- * 输出 state：PHASE=OPENING, AI_OUTPUT, MESSAGES, HISTORY
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -31,7 +25,6 @@ public class OpeningNode {
         String resumeSummary = nodeSupport.text(state, InterviewState.RESUME_TEXT);
         String interviewType = nodeSupport.text(state, InterviewState.INTERVIEW_TYPE);
 
-        // 根据面试类型选择 prompt 模板
         String promptName = "HR".equals(interviewType) ? "hr_opening" : "opening";
         String prompt = promptLoader.render(promptName, Map.of(
                 "position", position.isEmpty() ? "Java" : position,
@@ -57,7 +50,6 @@ public class OpeningNode {
         return result;
     }
 
-    /** 调用 LLM，异常时返回 null（由调用方兜底） */
     protected String callLlm(ChatClient client, String prompt) {
         try {
             return client.prompt().user(prompt).call().content();

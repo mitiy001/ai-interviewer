@@ -54,6 +54,7 @@ export interface Skill {
   promptTemplate: string
   scoringDimensions: { name: string; max: number }[]
   isActive: number
+  type?: string
 }
 
 export interface UploadResult {
@@ -88,6 +89,7 @@ export interface StartReq {
   modelConfigId?: number
   skillId?: number
   maxTurns?: number
+  interviewType?: string
 }
 
 export interface StartResp {
@@ -100,6 +102,7 @@ export interface InterviewListItem {
   status: string
   maxTurns: number
   totalScore: number | null
+  interviewType?: string
   startTime: string
   endTime: string | null
 }

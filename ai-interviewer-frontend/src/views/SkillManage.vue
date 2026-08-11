@@ -21,11 +21,12 @@ const emptyForm = {
   name: '',
   position: '',
   level: 'mid',
+  type: 'TECH',
   promptTemplate: '',
   scoringDimensions: [] as DimensionForm[],
 }
 
-const form = reactive<{ name: string; position: string; level: string; promptTemplate: string; scoringDimensions: DimensionForm[] }>({ ...emptyForm })
+const form = reactive<{ name: string; position: string; level: string; type: string; promptTemplate: string; scoringDimensions: DimensionForm[] }>({ ...emptyForm })
 
 const levelOptions = [
   { value: 'junior', label: '初级' },
@@ -55,6 +56,7 @@ function openCreate() {
   form.name = ''
   form.position = ''
   form.level = 'mid'
+  form.type = 'TECH'
   form.promptTemplate = ''
   form.scoringDimensions = []
   showDialog.value = true
@@ -66,6 +68,7 @@ function openEdit(row: Skill) {
   form.name = row.name
   form.position = row.position
   form.level = row.level
+  form.type = row.type || 'TECH'
   form.promptTemplate = row.promptTemplate
   form.scoringDimensions = (row.scoringDimensions || []).map((d) => ({ name: d.name, max: d.max }))
   showDialog.value = true
@@ -90,7 +93,6 @@ async function submit() {
   if (!form.position.trim()) { errorMsg.value = '请输入职位'; return }
   if (!form.promptTemplate.trim()) { errorMsg.value = '请输入提示词模板'; return }
 
-  // 校验评分维度
   const validDims = form.scoringDimensions.filter((d) => d.name.trim())
   if (validDims.length === 0) { errorMsg.value = '请至少添加一个评分维度'; return }
 
@@ -100,6 +102,7 @@ async function submit() {
       name: form.name.trim(),
       position: form.position.trim(),
       level: form.level,
+      type: form.type,
       promptTemplate: form.promptTemplate.trim(),
       scoringDimensions: validDims,
     }
@@ -170,6 +173,7 @@ onMounted(loadList)
               <th>名称</th>
               <th>职位</th>
               <th>等级</th>
+              <th>类型</th>
               <th>评分维度</th>
               <th>状态</th>
               <th style="width: 180px;">操作</th>
@@ -181,6 +185,7 @@ onMounted(loadList)
               <td>{{ row.name }}</td>
               <td>{{ row.position }}</td>
               <td>{{ levelLabel[row.level] || row.level }}</td>
+              <td><span class="badge">{{ row.type === 'HR' ? '人事面' : '技术面' }}</span></td>
               <td class="muted" style="font-size: 11px; white-space: normal;">
                 {{ (row.scoringDimensions || []).map((d) => `${d.name}(${d.max}分)`).join('、') }}
               </td>
@@ -201,7 +206,6 @@ onMounted(loadList)
       </div>
     </div>
 
-    <!-- 新增 / 编辑弹窗 -->
     <div v-if="showDialog" class="modal-mask" @click.self="closeDialog">
       <div class="modal card">
         <h3 class="section-title" style="margin-bottom: 16px;">
@@ -226,7 +230,24 @@ onMounted(loadList)
           </select>
         </div>
 
-        <!-- 评分维度 -->
+        <div class="form-group">
+          <label>类型</label>
+          <div class="row" style="gap: 8px;">
+            <button
+              class="btn"
+              :class="form.type === 'TECH' ? 'btn-gradient' : 'btn-secondary'"
+              style="flex: 1; padding: 8px 12px;"
+              @click="form.type = 'TECH'"
+            >技术面</button>
+            <button
+              class="btn"
+              :class="form.type === 'HR' ? 'btn-gradient' : 'btn-secondary'"
+              style="flex: 1; padding: 8px 12px;"
+              @click="form.type = 'HR'"
+            >人事面</button>
+          </div>
+        </div>
+
         <div class="form-group">
           <div class="dim-header">
             <label>评分维度</label>
@@ -334,7 +355,6 @@ onMounted(loadList)
   line-height: 1.6;
 }
 
-/* ===== 移动端响应式 ===== */
 @media (max-width: 768px) {
   .modal {
     width: 94vw;

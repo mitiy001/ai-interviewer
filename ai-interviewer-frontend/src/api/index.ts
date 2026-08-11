@@ -37,9 +37,9 @@ export const ModelConfigApi = {
 export const SkillApi = {
   list: () => unwrap<Skill[]>(http.get('/skill')),
   get: (id: number) => unwrap<Skill>(http.get(`/skill/${id}`)),
-  create: (req: { name: string; position: string; level: string; promptTemplate: string; scoringDimensions: { name: string; max: number }[] }) =>
+  create: (req: { name: string; position: string; level: string; type?: string; promptTemplate: string; scoringDimensions: { name: string; max: number }[] }) =>
     unwrap<number>(http.post('/skill', req)),
-  update: (id: number, req: { name?: string; position?: string; level?: string; promptTemplate?: string; scoringDimensions?: { name: string; max: number }[] }) =>
+  update: (id: number, req: { name?: string; position?: string; level?: string; type?: string; promptTemplate?: string; scoringDimensions?: { name: string; max: number }[] }) =>
     http.put(`/skill/${id}`, req).then((r) => r.data),
   delete: (id: number) => http.delete(`/skill/${id}`).then((r) => r.data),
   activate: (id: number) => http.post(`/skill/${id}/activate`).then((r) => r.data),

@@ -93,7 +93,6 @@ async function submit() {
   if (!form.position.trim()) { errorMsg.value = '请输入职位'; return }
   if (!form.promptTemplate.trim()) { errorMsg.value = '请输入提示词模板'; return }
 
-  // 校验评分维度
   const validDims = form.scoringDimensions.filter((d) => d.name.trim())
   if (validDims.length === 0) { errorMsg.value = '请至少添加一个评分维度'; return }
 
@@ -207,7 +206,6 @@ onMounted(loadList)
       </div>
     </div>
 
-    <!-- 新增 / 编辑弹窗 -->
     <div v-if="showDialog" class="modal-mask" @click.self="closeDialog">
       <div class="modal card">
         <h3 class="section-title" style="margin-bottom: 16px;">
@@ -250,7 +248,7 @@ onMounted(loadList)
           </div>
         </div>
 
-        <!-- 评分维度 -->
+<!-- 评分维度 -->
         <div class="form-group">
           <div class="dim-header">
             <label>评分维度</label>
@@ -358,7 +356,6 @@ onMounted(loadList)
   line-height: 1.6;
 }
 
-/* ===== 移动端响应式 ===== */
 @media (max-width: 768px) {
   .modal {
     width: 94vw;

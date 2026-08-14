@@ -18,6 +18,7 @@ public class InterviewRecord {
     private Long skillId;
     private Long resumeId;
     private Long bankId;
+    private String interviewType;
     private String status;
     private Integer maxTurns;
     private Integer totalScore;

@@ -41,6 +41,7 @@ public class SummaryNode {
         String position = nodeSupport.text(state, InterviewState.POSITION);
         String level = nodeSupport.text(state, InterviewState.LEVEL);
         String resumeSummary = nodeSupport.text(state, InterviewState.RESUME_TEXT);
+        String interviewType = nodeSupport.text(state, InterviewState.INTERVIEW_TYPE);
 
         // 计算得分率：满分 = maxTurns × 100（每题 100 分）
         int maxTurns = state.value(InterviewState.MAX_TURNS, 5);
@@ -52,7 +53,9 @@ public class SummaryNode {
         for (int s : scoreList) if (s < 40) failCount++;
         int totalQuestions = Math.max(scoreList.size(), maxTurns);
 
-        String prompt = promptLoader.render("summary", Map.of(
+        // 根据面试类型选择 prompt 模板
+        String promptName = "HR".equals(interviewType) ? "hr_summary" : "summary";
+        String prompt = promptLoader.render(promptName, Map.of(
                 "position", position.isEmpty() ? "Java" : position,
                 "level", level.isEmpty() ? "mid" : level,
                 "resume_summary", resumeSummary.isEmpty() ? "(未提供简历)" : resumeSummary,
@@ -64,8 +67,8 @@ public class SummaryNode {
                 "score_rate", scoreRatePct + "%"
         ));
 
-        log.info("[node:summary] 调用 LLM 生成总结, totalScore={}, scoreRate={}%, failCount={}/{}",
-                totalScore, scoreRatePct, failCount, totalQuestions);
+        log.info("[node:summary] 调用 LLM 生成总结, interviewType={}, totalScore={}, scoreRate={}%, failCount={}/{}",
+                interviewType, totalScore, scoreRatePct, failCount, totalQuestions);
         ChatClient client = nodeSupport.getChatClient(state);
         String llmResult = callLlm(client, prompt);
 

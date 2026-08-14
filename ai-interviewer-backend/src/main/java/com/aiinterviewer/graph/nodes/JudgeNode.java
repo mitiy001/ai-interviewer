@@ -41,8 +41,11 @@ public class JudgeNode {
         String skillPrompt = nodeSupport.text(state, InterviewState.SKILL_PROMPT);
         String position = nodeSupport.text(state, InterviewState.POSITION);
         String level = nodeSupport.text(state, InterviewState.LEVEL);
+        String interviewType = nodeSupport.text(state, InterviewState.INTERVIEW_TYPE);
 
-        String prompt = promptLoader.render("judge", Map.of(
+        // 根据面试类型选择 prompt 模板
+        String promptName = "HR".equals(interviewType) ? "hr_judge" : "judge";
+        String prompt = promptLoader.render(promptName, Map.of(
                 "skill_prompt", skillPrompt,
                 "position", position.isEmpty() ? "Java" : position,
                 "level", level.isEmpty() ? "mid" : level,
@@ -52,7 +55,7 @@ public class JudgeNode {
                 "user_answer", userAnswer.isEmpty() ? "(未作答)" : userAnswer
         ));
 
-        log.info("[node:judge] 调用 LLM 判定");
+        log.info("[node:judge] 调用 LLM 判定, interviewType={}", interviewType);
         ChatClient client = nodeSupport.getChatClient(state);
         String llmResult = callLlm(client, prompt);
 

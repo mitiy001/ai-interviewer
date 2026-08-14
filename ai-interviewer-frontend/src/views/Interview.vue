@@ -46,6 +46,7 @@ const startForm = reactive({
   bankId: undefined as number | undefined,
   skillId: undefined as number | undefined,
   maxTurns: 5,
+  interviewType: 'TECH',
 })
 
 // ===== 会话状态 =====
@@ -82,6 +83,16 @@ let eventSource: EventSource | null = null
 const canSend = computed(() => waitingAnswer.value && answerInput.value.trim().length > 0 && !submittingAnswer.value)
 const activeSkill = computed(() => skills.value.find((s) => s.isActive === 1))
 const activeModel = computed(() => models.value.find((m) => m.isActive === 1))
+
+/** 根据面试类型过滤可用的 Skill */
+const filteredSkills = computed(() => {
+  if (startForm.interviewType === 'HR') {
+    // 人事面：显示 type 为 HR 的 skill
+    return skills.value.filter(s => s.type === 'HR')
+  }
+  // 技术面：显示 type 为 TECH 或未设置 type 的 skill
+  return skills.value.filter(s => !s.type || s.type === 'TECH')
+})
 
 async function loadList() {
   loadingList.value = true
@@ -135,6 +146,7 @@ async function startInterview() {
       bankId: startForm.bankId,
       skillId: startForm.skillId,
       maxTurns: startForm.maxTurns,
+      interviewType: startForm.interviewType,
     })
     interviewId.value = resp.interviewId
     messages.value = []
@@ -398,6 +410,10 @@ function statusBadgeClass(s: string): string {
   return 'badge badge-warning'
 }
 
+function interviewTypeLabel(type?: string): string {
+  return type === 'HR' ? '人事面' : '技术面'
+}
+
 onMounted(async () => {
   await loadList()
   preloadVoices()
@@ -453,10 +469,30 @@ onUnmounted(() => {
               <option v-for="b in banks" :key="b.id" :value="b.id">{{ b.name }} ({{ b.questionCount }}题)</option>
             </select>
           </div>
+          <div class="form-group" style="width: 160px;">
+            <label>面试类型</label>
+            <div class="row" style="gap: 8px; align-items: stretch;">
+              <button
+                class="btn"
+                :class="startForm.interviewType === 'TECH' ? 'btn-gradient' : 'btn-secondary'"
+                style="flex: 1; padding: 8px 12px;"
+                @click="startForm.interviewType = 'TECH'; startForm.skillId = filteredSkills.length > 0 ? filteredSkills[0].id : undefined"
+              >技术面</button>
+              <button
+                class="btn"
+                :class="startForm.interviewType === 'HR' ? 'btn-gradient' : 'btn-secondary'"
+                style="flex: 1; padding: 8px 12px;"
+                @click="startForm.interviewType = 'HR'; startForm.skillId = filteredSkills.length > 0 ? filteredSkills[0].id : undefined"
+              >人事面</button>
+            </div>
+          </div>
           <div class="form-group" style="flex: 1; min-width: 220px;">
-            <label>面试等级 / Skill</label>
+            <label>{{ startForm.interviewType === 'HR' ? 'HR 面试官' : '面试等级 / Skill' }}</label>
             <select v-model="startForm.skillId" class="input">
-              <option v-for="s in skills" :key="s.id" :value="s.id">
+              <option v-if="filteredSkills.length === 0" :value="undefined" disabled>
+                {{ startForm.interviewType === 'HR' ? '暂无 HR 面试官，请先创建' : '暂无可用 Skill' }}
+              </option>
+              <option v-for="s in filteredSkills" :key="s.id" :value="s.id">
                 {{ s.name }}{{ s.isActive === 1 ? '（已激活）' : '' }}
               </option>
             </select>
@@ -470,7 +506,9 @@ onUnmounted(() => {
           <span class="muted">当前激活模型：</span>
           <span v-if="activeModel" class="mono">{{ activeModel.name }} / {{ activeModel.model }}</span>
           <span v-else class="error-text">未激活</span>
-          <span class="muted" style="margin-left: 16px;">激活 Skill：</span>
+          <span class="muted" style="margin-left: 16px;">{{
+            startForm.interviewType === 'HR' ? 'HR 面试官：' : '激活 Skill：'
+          }}</span>
           <span v-if="activeSkill" class="mono">{{ activeSkill.name }}</span>
           <span v-else class="error-text">未激活</span>
         </div>
@@ -486,6 +524,7 @@ onUnmounted(() => {
               <thead>
                 <tr>
                   <th>ID</th>
+                  <th>类型</th>
                   <th>状态</th>
                   <th>轮次</th>
                   <th>总分</th>
@@ -497,6 +536,7 @@ onUnmounted(() => {
               <tbody>
                 <tr v-for="r in list" :key="r.id">
                   <td>#{{ r.id }}</td>
+                  <td><span class="badge">{{ interviewTypeLabel(r.interviewType) }}</span></td>
                   <td><span :class="statusBadgeClass(r.status)">{{ r.status }}</span></td>
                   <td>{{ r.maxTurns }}</td>
                   <td>{{ r.totalScore ?? '-' }}</td>

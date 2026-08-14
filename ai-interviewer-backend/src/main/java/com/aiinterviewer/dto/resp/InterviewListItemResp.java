@@ -15,6 +15,7 @@ public class InterviewListItemResp {
     private String status;
     private Integer maxTurns;
     private Integer totalScore;
+    private String interviewType;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
 }

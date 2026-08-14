@@ -29,14 +29,17 @@ public class OpeningNode {
         String position = nodeSupport.text(state, InterviewState.POSITION);
         String level = nodeSupport.text(state, InterviewState.LEVEL);
         String resumeSummary = nodeSupport.text(state, InterviewState.RESUME_TEXT);
+        String interviewType = nodeSupport.text(state, InterviewState.INTERVIEW_TYPE);
 
-        String prompt = promptLoader.render("opening", Map.of(
+        // 根据面试类型选择 prompt 模板
+        String promptName = "HR".equals(interviewType) ? "hr_opening" : "opening";
+        String prompt = promptLoader.render(promptName, Map.of(
                 "position", position.isEmpty() ? "Java" : position,
                 "level", level.isEmpty() ? "mid" : level,
                 "resume_summary", resumeSummary.isEmpty() ? "(未提供简历)" : resumeSummary
         ));
 
-        log.info("[node:opening] 调用 LLM 生成开场白, position={}", position);
+        log.info("[node:opening] 调用 LLM 生成开场白, position={}, interviewType={}", position, interviewType);
         ChatClient client = nodeSupport.getChatClient(state);
         String opening = callLlm(client, prompt);
         if (opening == null || opening.isBlank()) {

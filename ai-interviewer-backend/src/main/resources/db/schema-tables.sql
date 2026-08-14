@@ -2,6 +2,9 @@
 
 -- ⚠ 已有库升级语句（老库必须执行，新库已有该列时将跳过，continue-on-error 会忽略重复列错误）
 ALTER TABLE `user` ADD COLUMN `role` VARCHAR(16) NOT NULL DEFAULT 'user' COMMENT 'admin/user' AFTER `status`;
+ALTER TABLE `interview_record` ADD COLUMN `context` LONGTEXT DEFAULT NULL COMMENT '面试状态上下文JSON（用于断线重连恢复）' AFTER `total_score`;
+ALTER TABLE `interview_record` ADD COLUMN `interview_type` VARCHAR(16) NOT NULL DEFAULT 'TECH' COMMENT 'TECH/HR' AFTER `bank_id`;
+ALTER TABLE `skill` ADD COLUMN `type` VARCHAR(16) NOT NULL DEFAULT 'TECH' COMMENT 'TECH/HR' AFTER `level`;
 
 -- 1. 用户表
 CREATE TABLE IF NOT EXISTS `user` (
@@ -47,6 +50,7 @@ CREATE TABLE IF NOT EXISTS skill (
   name                VARCHAR(64) NOT NULL,
   position            VARCHAR(32) NOT NULL DEFAULT 'default',
   level               VARCHAR(16) NOT NULL DEFAULT 'mid' COMMENT '工程师等级 junior/mid/senior',
+  type                VARCHAR(16) NOT NULL DEFAULT 'TECH' COMMENT 'TECH/HR',
   prompt_template     TEXT NOT NULL,
   scoring_dimensions  JSON NOT NULL,
   is_active           TINYINT NOT NULL DEFAULT 0,
@@ -103,9 +107,11 @@ CREATE TABLE IF NOT EXISTS interview_record (
   skill_id         BIGINT NOT NULL,
   resume_id        BIGINT DEFAULT NULL,
   bank_id          BIGINT NOT NULL,
+  interview_type   VARCHAR(16) NOT NULL DEFAULT 'TECH' COMMENT 'TECH/HR',
   status           VARCHAR(16) NOT NULL DEFAULT 'RUNNING' COMMENT 'RUNNING/FINISHED/ABORTED',
   max_turns        INT NOT NULL DEFAULT 5 COMMENT '本轮面试轮次上限',
   total_score      INT DEFAULT NULL,
+  context          LONGTEXT DEFAULT NULL COMMENT '面试状态上下文JSON（用于断线重连恢复）',
   start_time       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   end_time         DATETIME DEFAULT NULL,
   PRIMARY KEY (id),
